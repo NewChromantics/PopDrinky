@@ -81,8 +81,8 @@ uniform float TimeNormal;
 
 const vec3 WorldUp = vec3(0,-1,0);
 const float FloorY = 2.0;
-#define FAR_Z		80.0
-#define MAX_STEPS	120
+#define FAR_Z		20.0
+#define MAX_STEPS	20
 #define CLOSEENOUGH_FOR_HIT	0.001
 float Range(float Min,float Max,float Value)
 {
