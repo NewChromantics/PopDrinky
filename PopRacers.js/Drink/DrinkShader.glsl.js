@@ -240,6 +240,7 @@ float DistanceToGlass(vec3 Position)
 }
 
 const float BottomHeightPercent = 0.3;
+const float TopHeightPercent = 0.5;
 const float FlyHeight = 0.3;
 
 float DistanceToLiquidBottom(vec3 Position)
@@ -282,7 +283,7 @@ float DistanceToLiquidTop(vec3 Position)
 	vec3 BottomTop = WorldBoundsBottom + BottomChunk;
 	BottomTop += TimeOffset;
 	
-	vec3 Chunk = (WorldBoundsTop - WorldBoundsBottom) * (1.0-BottomHeightPercent);
+	vec3 Chunk = (WorldBoundsTop - WorldBoundsBottom) * (TopHeightPercent);
 	vec3 Top = BottomTop + Chunk;
 	
 	
@@ -292,21 +293,59 @@ float DistanceToLiquidTop(vec3 Position)
 	Distance -= 0.01;
 	
 	//	wobble
-	float DistanceWobbled = TimeNormal * GetDisplacement( Position /*- TimeOffset*/, 20.0 + TimeNormal, 0.3*TimeNormal );
+	float DistanceWobbled = TimeNormal * GetDisplacement( Position /*- TimeOffset*/, 24.0 + TimeNormal, 0.2*TimeNormal );
 	DistanceWobbled += Distance;
 
-	float Smoothk = 0.50 * TimeNormal;
+	float Smoothk = 0.30 * TimeNormal;
 	float SmoothedDistance = opSmoothUnion( DistanceWobbled, Distance, Smoothk ); 
 
 	return SmoothedDistance;
+}
+
+float opIntersection( float d1, float d2 ) 
+{
+	return max(d1,d2);
+}
+
+float opUnion( float d1, float d2 ) 
+{
+	return min(d1,d2); 
+}
+
+float DistanceToSphere(vec3 Position,vec3 Center,float Radius)
+{
+	float Distance = length( Center - Position );
+	Distance -= Radius;
+	return Distance;
+}
+
+float DistanceToLiquidBounds(vec3 Position)
+{
+	//	glass bounds
+	float Glass = DistanceToCappedCylinder_StartEnd( Position, WorldBoundsBottom, WorldBoundsTop, DrinkRadius );
+	
+	//	some space on top
+	float RadiusAbove = 0.60;
+	float DistanceAbove = 0.59;//	should be able to calc this to work out where edge of sphere hits edge of rim
+	float Above = DistanceToSphere( Position, WorldBoundsTop+vec3(0,DistanceAbove,0), RadiusAbove );
+	//float Above = DistanceToCappedCylinder_StartEnd( Position, WorldBoundsTop, WorldBoundsTop+vec3(0,1,0), DrinkRadius*10.0 );
+	
+	return opUnion( Glass, Above );
 }
 
 float DistanceToLiquid(vec3 Position)
 {
 	float Bottom = DistanceToLiquidBottom(Position);
 	float Top = DistanceToLiquidTop(Position);
+	//	blend together
 	float Smoothk = 0.0015;
-	return opSmoothUnion(Bottom,Top,Smoothk);
+	float LiquidDistance = opSmoothUnion(Bottom,Top,Smoothk);
+	
+	//	strict intersection(AND) with glass shape
+	float LiquidBounds = DistanceToLiquidBounds(Position);
+	
+	float Distance = opIntersection( LiquidBounds, LiquidDistance );
+	return Distance;
 }
 
 float DistanceToSphere(vec3 Position)
