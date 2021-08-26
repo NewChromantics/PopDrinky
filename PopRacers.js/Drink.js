@@ -2,6 +2,8 @@ import * as PopMath from './PopEngineCommon/Math.js'
 const Default = 'Drink.js';
 export default Default;
 
+import Pop from './PopEngineCommon/PopEngine.js'
+import Params from './Params.js'
 import {CreateCubeGeometry} from './PopEngineCommon/CommonGeometry.js'
 import * as DrinkShaderSource from './Drink/DrinkShader.glsl.js'
 import {ExtractShaderUniforms} from './PopEngineCommon/Shaders.js'
@@ -46,9 +48,13 @@ export function OnClickMap(WorldPos,WorldRay,FirstDown)
 			//PendingPosition = WorldPos;
 			//	immediatly place
 			DrinkBottom = WorldPos;
+			
+			//	auto height
+			DrinkTop = PopMath.Add3( DrinkBottom, [0,0.15,0] );
 		}
 	}
-	else if ( DrinkBottom )//if ( !DrinkTop && DrinkBottom )
+	//else if ( DrinkBottom )
+	else if ( !DrinkTop && DrinkBottom )
 	{
 		//	need to find the Y above drinkbottom that we're pointing at
 		//	so get two rays, drink up, and our ray
@@ -80,9 +86,29 @@ export async function LoadAssets(RenderContext)
 	}
 }
 
+function GetNormalisedTime()
+{
+	const LoopDurationMs = Params.LoopDurationSecs * 1000; 
+	let TimeMs = Pop.GetTimeNowMs()
+	TimeMs %= LoopDurationMs;
+	
+	//	normalise
+	let TimeNorm  = TimeMs / LoopDurationMs;
+	
+	//	ping pong
+	if ( TimeNorm >= 0.5 )
+		TimeNorm = PopMath.Range( 1.0, 0.5, TimeNorm );
+	else
+		TimeNorm = PopMath.Range( 0.0, 0.5, TimeNorm );
+
+	return TimeNorm;
+}
+
 export function GetRenderCommands(CameraUniforms,Camera,Assets)
 {
 	let Commands = [];
+	
+	const Time = GetNormalisedTime();
 	
 	function DrawCube(Position)
 	{
@@ -107,7 +133,9 @@ export function GetRenderCommands(CameraUniforms,Camera,Assets)
 			Uniforms.LocalToWorldTransform = PopMath.CreateIdentityMatrix();
 			Uniforms.WorldBoundsBottom = Bottom;
 			Uniforms.WorldBoundsTop = Top;
-			Uniforms.BoundsRadius = 0.06;
+			Uniforms.BoundsRadius = 1.06;
+			Uniforms.DrinkRadius = 0.06;
+			Uniforms.TimeNormal = Time * Time;
 			Commands.push( ['Draw',DrinkGeo,DrinkShader,Uniforms] );
 		}
 	}

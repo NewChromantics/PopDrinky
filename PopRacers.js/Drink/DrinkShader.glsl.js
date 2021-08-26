@@ -29,6 +29,7 @@ void main()
 	WorldPos.xyz = mix( WorldBoundsBottom, WorldBoundsTop, LocalPos.y );
 	WorldPos.x += mix( -BoundsRadius, BoundsRadius, LocalPos.x );
 	WorldPos.z += mix( -BoundsRadius, BoundsRadius, LocalPos.z );
+	WorldPos.y += mix( -BoundsRadius, BoundsRadius, LocalPos.y );
 	WorldPos.w = 1.0;
 	
 	vec4 CameraPos = WorldToCameraTransform * WorldPos;	//	world to camera space
@@ -67,6 +68,7 @@ varying vec3 WorldPosition;
 uniform vec3 WorldBoundsBottom;
 uniform vec3 WorldBoundsTop;
 uniform float BoundsRadius;
+uniform float DrinkRadius;
 
 uniform mat4 ScreenToCameraTransform;
 uniform mat4 CameraToWorldTransform;
@@ -75,8 +77,8 @@ const bool DrawNormals = false;
 const bool DrawShadows = true;
 const bool DrawHeat = false;
 
+uniform float TimeNormal;
 
-uniform float TimeSecs;
 const vec3 WorldUp = vec3(0,-1,0);
 const float FloorY = 2.0;
 #define FAR_Z		80.0
@@ -203,26 +205,108 @@ float sdCappedCone( vec3 p, float h, float r1, float r2 )
 
 float sdCappedCylinder( vec3 p, float h, float r )
 {
-	vec2 d = abs(vec2(length(p.xz),p.y)) - vec2(h,r);
+	//	gr: height and radius were backwards??
+	//vec2 d = abs(vec2(length(p.xz),p.y)) - vec2(h,r);
+	vec2 d = abs(vec2(length(p.xz),p.y)) - vec2(r,h);
 	return min(max(d.x,d.y),0.0) + length(max(d,0.0));
 }
+
+float DistanceToCappedCylinder_StartEnd(vec3 Position,vec3 Bottom,vec3 Top,float Radius)
+{
+	vec3 Center = mix( Bottom, Top, 0.5 );
+	float Height = length( Bottom - Top ) / 2.0;
+	Position -= Center;
+	return sdCappedCylinder( Position, Height, Radius ); 
+}
+
+ 
 
 float DistanceToGlass(vec3 Position)
 {
 	vec3 GlassCenter = mix( WorldBoundsBottom, WorldBoundsTop, 0.5 );
 	float GlassHeight = length( WorldBoundsBottom - WorldBoundsTop ) / 2.0;
 	
-	float Rounding = GlassHeight * 0.2;
+	float Rounding = 0.0;//GlassHeight * 0.2;
 	Rounding = min( Rounding, 0.005 );
 	
 	
 	GlassHeight -= Rounding * 2.0;
-	float GlassRadius = BoundsRadius - Rounding - Rounding;
+	float GlassRadius = DrinkRadius - Rounding - Rounding;
 	float TopRadius = GlassRadius;
 	float BottomRadius = GlassRadius * 0.7;
 	float Distance = sdCappedCone( Position - GlassCenter, GlassHeight, BottomRadius, TopRadius );
 	Distance -= Rounding;
 	return Distance;
+}
+
+const float BottomHeightPercent = 0.3;
+const float FlyHeight = 0.3;
+
+float DistanceToLiquidBottom(vec3 Position)
+{
+	vec3 Bottom = WorldBoundsBottom;
+	vec3 BottomChunk = (WorldBoundsTop - WorldBoundsBottom) * BottomHeightPercent;
+	vec3 Top = Bottom + BottomChunk;
+	float Distance = DistanceToCappedCylinder_StartEnd( Position, Bottom, Top, DrinkRadius );
+	
+	//	smooth edges
+	Distance -= 0.01;
+	return Distance;
+}
+
+
+float GetDisplacement(vec3 PositionSeed,float Frequency,float Scale)
+{
+	PositionSeed *= vec3(Frequency,Frequency,Frequency);
+	float Displacement = 1.0;
+	Displacement *= sin(PositionSeed.x);
+	Displacement *= sin(PositionSeed.y);
+	Displacement *= sin(PositionSeed.z);
+	Displacement *= Scale;
+	return Displacement;
+}
+
+
+float opSmoothUnion( float d1, float d2, float k ) {
+    float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return mix( d2, d1, h ) - k*h*(1.0-h); }
+float opSmoothIntersection( float d1, float d2, float k ) {
+    float h = clamp( 0.5 - 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return mix( d2, d1, h ) + k*h*(1.0-h); }
+    
+
+float DistanceToLiquidTop(vec3 Position)
+{
+	vec3 TimeOffset = vec3(0,TimeNormal * FlyHeight,0);
+	vec3 BottomChunk = (WorldBoundsTop - WorldBoundsBottom) * BottomHeightPercent;
+	vec3 BottomTop = WorldBoundsBottom + BottomChunk;
+	BottomTop += TimeOffset;
+	
+	vec3 Chunk = (WorldBoundsTop - WorldBoundsBottom) * (1.0-BottomHeightPercent);
+	vec3 Top = BottomTop + Chunk;
+	
+	
+	float Distance = DistanceToCappedCylinder_StartEnd( Position, BottomTop, Top, DrinkRadius );
+	
+	//	smooth edges
+	Distance -= 0.01;
+	
+	//	wobble
+	float DistanceWobbled = TimeNormal * GetDisplacement( Position /*- TimeOffset*/, 20.0 + TimeNormal, 0.3*TimeNormal );
+	DistanceWobbled += Distance;
+
+	float Smoothk = 0.50 * TimeNormal;
+	float SmoothedDistance = opSmoothUnion( DistanceWobbled, Distance, Smoothk ); 
+
+	return SmoothedDistance;
+}
+
+float DistanceToLiquid(vec3 Position)
+{
+	float Bottom = DistanceToLiquidBottom(Position);
+	float Top = DistanceToLiquidTop(Position);
+	float Smoothk = 0.0015;
+	return opSmoothUnion(Bottom,Top,Smoothk);
 }
 
 float DistanceToSphere(vec3 Position)
@@ -234,7 +318,7 @@ float DistanceToSphere(vec3 Position)
 	return DistanceToBox( Position, Sphere.xyz, Sphere.www );
 	*/
 	//float SphereRadius = PingPongNormal(fract(TimeSecs)) * Sphere.w;
-	float SphereRadius = BoundsRadius;
+	float SphereRadius = DrinkRadius;
 	float Distance = length(WorldBoundsBottom.xyz - Position);
 	Distance -= SphereRadius;
 	return Distance;
@@ -251,10 +335,11 @@ float DistanceToFloor(vec3 Position)
 }
 float map(vec3 Position)
 {
-	float SphereDistance = DistanceToGlass( Position );
+	float GlassDistance = DistanceToGlass( Position );
+	float LiquidDistance = DistanceToLiquid( Position );
 	//float FloorDistance = DistanceToFloor( Position );
 	//return min( SphereDistance, FloorDistance );
-	return SphereDistance;
+	return LiquidDistance;
 }
 //	xyz heat (0= toofar/miss)
 vec4 GetSceneIntersection(vec3 RayPos,vec3 RayDir)
@@ -325,8 +410,10 @@ void main()
 	{
 		Colour = Range3( vec3(-1,-1,-1), vec3(1,1,1), Normal );
 	}
+	Colour[2] = TimeNormal;
+
 	//Colour = mix( Background, Colour, Intersection.w );
-	//if ( DrawNormals )
+	if ( DrawNormals )
 	{
 		vec3 Normal = calcNormal(Intersection.xyz);
 		Normal = Range3( vec3(-1,-1,-1), vec3(1,1,1), Normal );
@@ -361,12 +448,12 @@ void main()
 			//Colour = vec3(0,0,0);
 		}
 	}
-
+*/
 	
 	{
 		gl_FragColor = vec4(Colour,1);
 	}
-	*/
+
 }
 `;
 
