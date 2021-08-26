@@ -1,7 +1,7 @@
 const Params = {};
 
-Params.DrawWorldGeo = true;
-Params.DrawWorldGeoCenter = true;
+Params.DrawWorldGeo = false;
+Params.DrawWorldGeoCenter = false;
 Params.DrawDollsHouse = false;
 Params.DollsHouseScale = 0.05;
 

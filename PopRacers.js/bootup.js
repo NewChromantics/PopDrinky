@@ -85,7 +85,8 @@ async function WindowRenderThread(RenderViewName,DoRender)
 	}
 }
 WindowRenderThread('RenderView').catch(Pop.Warning);
-WindowRenderThread('ExternalScreen').catch(Pop.Warning);
+//	testing 2nd screen on ios
+//WindowRenderThread('ExternalScreen').catch(Pop.Warning);
 
 
 if ( Pop.GetPlatform()=='Web' )
