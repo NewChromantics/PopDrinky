@@ -86,6 +86,62 @@ export async function LoadAssets(RenderContext)
 	}
 }
 
+
+let LiquidSpherePositons = null;
+let LiquidSphereVelocties = null;
+let LiquidSphereDim = 4;
+
+export function Update()
+{
+	if ( !LiquidSpherePositons )
+	{
+		LiquidSpherePositons = [];
+		LiquidSphereVelocties = [];
+		for ( let x=0;	x<LiquidSphereDim;	x++ )
+		{
+			for ( let y=0;	y<LiquidSphereDim;	y++ )
+			{
+				for ( let z=0;	z<LiquidSphereDim;	z++ )
+				{
+					let xf = x / (LiquidSphereDim-1);
+					let yf = y / (LiquidSphereDim-1);
+					let zf = z / (LiquidSphereDim-1);
+					let Radius = Math.random();
+					LiquidSpherePositons.push( xf, yf, zf, Radius );
+					LiquidSphereVelocties.push(0,0,0,0);
+				}
+			}
+		}
+		LiquidSpherePositons = new Float32Array(LiquidSpherePositons);
+		LiquidSphereVelocties = new Float32Array(LiquidSphereVelocties);
+	}
+	
+	//	update each pos
+	for ( let fi=0;	fi<LiquidSpherePositons.length;	fi+=4 )
+	{
+		let TimeDelta = 1.0 / 60.0;
+		let Friction = 0.1;
+		 
+		//let i = fi / 4;
+		let v_xyz = LiquidSphereVelocties.slice(fi,fi+3);
+		let xyz = LiquidSpherePositons.slice(fi,fi+3);
+		
+		v_xyz[0] += (Math.random()-0.5) * 0.9;
+		v_xyz[1] += (Math.random()-0.5) * 0.9;
+		v_xyz[2] += (Math.random()-0.5) * 0.9;
+		v_xyz[0] *= 1.0 - Friction;;
+		v_xyz[1] *= 1.0 - Friction;;
+		v_xyz[2] *= 1.0 - Friction;;
+		
+		xyz[0] += v_xyz[0] * TimeDelta;
+		xyz[1] += v_xyz[1] * TimeDelta;
+		xyz[2] += v_xyz[2] * TimeDelta;
+		
+		LiquidSphereVelocties.set( v_xyz, fi );
+		LiquidSpherePositons.set( xyz, fi );
+	}
+}
+
 function GetNormalisedTime()
 {
 	const LoopDurationMs = Params.LoopDurationSecs * 1000; 
@@ -133,9 +189,10 @@ export function GetRenderCommands(CameraUniforms,Camera,Assets)
 			Uniforms.LocalToWorldTransform = PopMath.CreateIdentityMatrix();
 			Uniforms.WorldBoundsBottom = Bottom;
 			Uniforms.WorldBoundsTop = Top;
-			Uniforms.BoundsRadius = 1.06;
+			Uniforms.BoundsRadius = 0.8;
 			Uniforms.DrinkRadius = 0.06;
 			Uniforms.TimeNormal = Time * Time;
+			Uniforms.LiquidSpherePositons = LiquidSpherePositons;
 			Commands.push( ['Draw',DrinkGeo,DrinkShader,Uniforms] );
 		}
 	}

@@ -69,6 +69,8 @@ async function WindowRenderThread(RenderViewName,DoRender)
 	{
 		try
 		{
+			RenderScene.Update();
+			
 			const ScreenRect = RenderView.GetScreenRect();
 			await RenderScene.LoadAssets(Sokol);
 			const Commands = RenderScene.GetRenderCommands(FrameCount,ScreenRect);

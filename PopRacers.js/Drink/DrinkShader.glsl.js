@@ -82,7 +82,7 @@ uniform float TimeNormal;
 const vec3 WorldUp = vec3(0,-1,0);
 const float FloorY = 2.0;
 #define FAR_Z		20.0
-#define MAX_STEPS	20
+#define MAX_STEPS	30
 #define CLOSEENOUGH_FOR_HIT	0.001
 float Range(float Min,float Max,float Value)
 {
@@ -260,9 +260,9 @@ float GetDisplacement(vec3 PositionSeed,float Frequency,float Scale)
 {
 	PositionSeed *= vec3(Frequency,Frequency,Frequency);
 	float Displacement = 1.0;
-	Displacement *= sin(PositionSeed.x);
-	Displacement *= sin(PositionSeed.y);
-	Displacement *= sin(PositionSeed.z);
+	//Displacement *= sin(PositionSeed.x);
+	//Displacement *= sin(PositionSeed.y);
+	//Displacement *= sin(PositionSeed.z);
 	Displacement *= Scale;
 	return Displacement;
 }
@@ -333,8 +333,36 @@ float DistanceToLiquidBounds(vec3 Position)
 	return opUnion( Glass, Above );
 }
 
+#define LiquidSphereDim	3
+#define LiquidSpherePositonCount	(LiquidSphereDim*LiquidSphereDim*LiquidSphereDim)
+uniform vec4 LiquidSpherePositons[LiquidSpherePositonCount];
+
+float DistanceToLiquidSpheres(vec3 Position)
+{
+	float RadiusScale = 0.04;
+	float PositionScale = 0.10;
+	float Distance = 999.0;
+
+	for ( int i=0;	i<LiquidSpherePositonCount;	i++ )
+	{
+		//	todo: put input into local space, instead of scaling liquid pos 
+		vec3 LiquidPos = LiquidSpherePositons[i].xyz * vec3(PositionScale,PositionScale,PositionScale);
+		float LiquidRadius = LiquidSpherePositons[i].w * RadiusScale;
+		LiquidPos -= Position;
+		float NewDistance = length( LiquidPos );
+		NewDistance -= LiquidRadius;
+		
+		float Smoothk = 0.04;
+		Distance = opSmoothUnion(Distance,NewDistance,Smoothk);
+		//Distance = min( Distance, NewDistance );
+	}
+	return Distance;
+}
+
+
 float DistanceToLiquid(vec3 Position)
 {
+	return DistanceToLiquidSpheres(Position);
 	float Bottom = DistanceToLiquidBottom(Position);
 	float Top = DistanceToLiquidTop(Position);
 	//	blend together
@@ -439,7 +467,7 @@ void main()
 	vec4 Intersection = GetSceneIntersection( RayPos, RayDir );
 	if ( Intersection.w <= 0.0 )
 	{
-		gl_FragColor = vec4(Background,1);
+		gl_FragColor = vec4(Background,0.0);
 		discard;
 		return;
 	}

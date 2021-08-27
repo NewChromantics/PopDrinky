@@ -80,6 +80,11 @@ export async function LoadAssets(RenderContext)
 	await LoadWorldGeos(RenderContext);
 }
 
+export function Update()
+{
+	RaceTrack.Update();
+}
+
 //	get render commands in current state
 export function GetRenderCommands(FrameNumber,ScreenRect)
 {
