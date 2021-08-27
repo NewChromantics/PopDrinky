@@ -106,7 +106,7 @@ export function Update()
 					let xf = x / (LiquidSphereDim-1);
 					let yf = y / (LiquidSphereDim-1);
 					let zf = z / (LiquidSphereDim-1);
-					let PositionScale = 0.1;
+					let PositionScale = 0.05;
 					xf *= PositionScale;
 					yf *= PositionScale;
 					zf *= PositionScale;
@@ -123,10 +123,10 @@ export function Update()
 	//	update each pos
 	for ( let fi=0;	fi<LiquidSpherePositons.length;	fi+=4 )
 	{
-		let TimeDelta = 1.0 / 60.0;
+		let TimeDelta = 0.7 / 60.0;
 		let Friction = 0.03;
 		let Spring = 0.2;
-		let BrownianForce = 0.20;
+		let BrownianForce = 0.15;
 		 
 		//let i = fi / 4;
 		let v_xyz = LiquidSphereVelocties.slice(fi,fi+3);

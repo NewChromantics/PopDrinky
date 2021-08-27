@@ -275,6 +275,16 @@ float opSmoothIntersection( float d1, float d2, float k ) {
     float h = clamp( 0.5 - 0.5*(d2-d1)/k, 0.0, 1.0 );
     return mix( d2, d1, h ) + k*h*(1.0-h); }
     
+float sdPlane( vec3 p, vec3 n, float h )
+{
+	// n must be normalized
+	return dot(p,n) + h;
+}
+float DistanceToFloor(vec3 Position)
+{
+	float Distance = sdPlane( Position, WorldUp, FloorY );
+	return Distance;
+}
 
 float DistanceToLiquidTop(vec3 Position)
 {
@@ -339,7 +349,8 @@ uniform vec4 LiquidSpherePositons[LiquidSpherePositonCount];
 
 float DistanceToLiquidSpheres(vec3 Position)
 {
-	float RadiusScale = 0.04;
+	float RadiusScaleMin = 0.001;
+	float RadiusScaleMax = 0.03;
 	float PositionScale = 1.00;
 	float Distance = 999.0;
 
@@ -347,7 +358,13 @@ float DistanceToLiquidSpheres(vec3 Position)
 	{
 		//	todo: put input into local space, instead of scaling liquid pos 
 		vec3 LiquidPos = LiquidSpherePositons[i].xyz * vec3(PositionScale,PositionScale,PositionScale);
-		float LiquidRadius = LiquidSpherePositons[i].w * RadiusScale;
+		
+		float LiquidRadius = LiquidSpherePositons[i].w;
+		LiquidRadius = mix( RadiusScaleMin, RadiusScaleMax, LiquidRadius );
+
+		//	dont let liquid go below surface
+		LiquidPos.y = max( LiquidPos.y-LiquidRadius, WorldBoundsBottom.y );
+
 		LiquidPos -= Position;
 		float NewDistance = length( LiquidPos );
 		NewDistance -= LiquidRadius;
@@ -356,6 +373,11 @@ float DistanceToLiquidSpheres(vec3 Position)
 		Distance = opSmoothUnion(Distance,NewDistance,Smoothk);
 		//Distance = min( Distance, NewDistance );
 	}
+
+	//	dont let liquid go below surface
+	float FloorDistance = sdPlane( Position, WorldUp, WorldBoundsBottom.y );
+	Distance = max( Distance, FloorDistance );
+
 	return Distance;
 }
 
@@ -390,16 +412,7 @@ float DistanceToSphere(vec3 Position)
 	Distance -= SphereRadius;
 	return Distance;
 }
-float sdPlane( vec3 p, vec3 n, float h )
-{
-	// n must be normalized
-	return dot(p,n) + h;
-}
-float DistanceToFloor(vec3 Position)
-{
-	float Distance = sdPlane( Position, WorldUp, FloorY );
-	return Distance;
-}
+
 float map(vec3 Position)
 {
 	float GlassDistance = DistanceToGlass( Position );
