@@ -488,12 +488,22 @@ void main()
 		return;
 	}
 	
-	vec3 Colour;
+	vec3 RumBright = vec3(255, 213, 161)/vec3(255,255,255);//	rum
+	vec3 RumMidTone = vec3(227, 147, 43)/vec3(255,255,255);//	rum
+	vec3 Colour = RumMidTone;
+
 	vec3 Normal = calcNormal(Intersection.xyz);
 	{
-		Colour = Range3( vec3(-1,-1,-1), vec3(1,1,1), Normal );
+		//Colour = Range3( vec3(-1,-1,-1), vec3(1,1,1), Normal );
+		vec3 LightDir = normalize( vec3( 0.4, 0.9, 0.2 ) );
+		float Dot = dot( LightDir, Normal );
+		Dot = ( abs(Dot) > 0.575 ) ? Dot : 0.0;
+		
+		Colour = mix( Colour, RumBright, Dot );
+		if ( Dot > 0.94 )
+			Colour = vec3(1,1,1);
 	}
-	Colour[2] = TimeNormal;
+	//Colour[2] = TimeNormal;
 
 	//Colour = mix( Background, Colour, Intersection.w );
 	if ( DrawNormals )
