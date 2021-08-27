@@ -282,7 +282,7 @@ float sdPlane( vec3 p, vec3 n, float h )
 }
 float DistanceToFloor(vec3 Position)
 {
-	float Distance = sdPlane( Position, WorldUp, FloorY );
+	float Distance = sdPlane( Position, vec3(0,1,0), WorldBoundsBottom.y );
 	return Distance;
 }
 
@@ -487,41 +487,8 @@ void main()
 	vec3 RayPos,RayDir;
 	GetWorldRay(RayPos,RayDir);
 	vec4 Intersection = GetSceneIntersection( RayPos, RayDir, false );
-	if ( Intersection.w <= 0.0 )
-	{
-		gl_FragColor = vec4(Background,0.0);
-		discard;
-		return;
-	}
 	
-	vec3 RumBright = vec3(255, 163, 64)/vec3(255,255,255);//	rum
-	vec3 RumMidTone = vec3(181, 81, 4)/vec3(255,255,255);//	rum
-	vec3 RumDark = vec3(184, 70, 0)/vec3(255,255,255);//	rum
-	vec3 Colour = RumMidTone;
-	float Alpha = 1.0;
-
-	vec3 Normal = calcNormal(Intersection.xyz);
-	{
-		//Colour = Range3( vec3(-1,-1,-1), vec3(1,1,1), Normal );
-		vec3 DirToLight = normalize( LightPos-Intersection.xyz );
-		float Dot = dot( DirToLight, Normal );
-		//	tone mapping
-		//Dot = ( abs(Dot) > 0.575 ) ? Dot : 0.0;
-		//Dot *= Dot;	//	curve
-
-		//Alpha = mix( 0.3, 1.0, min(1.0,abs(Dot*Dot)) );
-		
-		Colour = mix( Colour, RumBright, Dot );
-		//	specular
-		if ( Dot > 0.96 )
-		{
-			Colour = vec3(1,1,1);
-			Alpha = 1.0;
-		}
-	}
-	//Colour[2] = TimeNormal;
-
-	//Colour = mix( Background, Colour, Intersection.w );
+	
 	if ( DrawNormals )
 	{
 		vec3 Normal = calcNormal(Intersection.xyz);
@@ -529,14 +496,66 @@ void main()
 		gl_FragColor = vec4( Normal,1.0);
 		return;
 	}
-	/*
+	
 	if ( DrawHeat )
 	{
 		float Shadow = HeatToShadow( Intersection.w );
 		gl_FragColor = vec4( Shadow, Shadow, Shadow, 1.0);
 		return;
 	}
-	*/
+	
+	//	hit liquid
+	vec3 Colour = vec3(0,1,0);
+	vec3 ShadowColour;
+	float Alpha = 1.0;
+	
+	if ( Intersection.w > 0.0 )
+	{
+		vec3 RumBright = vec3(255, 163, 64)/vec3(255,255,255);//	rum
+		vec3 RumMidTone = vec3(181, 81, 4)/vec3(255,255,255);//	rum
+		vec3 RumDark = vec3(184, 70, 0)/vec3(255,255,255);//	rum
+		ShadowColour = RumDark;
+		Colour = RumMidTone;
+		
+
+		vec3 Normal = calcNormal(Intersection.xyz);
+		{
+			//Colour = Range3( vec3(-1,-1,-1), vec3(1,1,1), Normal );
+			vec3 DirToLight = normalize( LightPos-Intersection.xyz );
+			float Dot = dot( DirToLight, Normal );
+			//	tone mapping
+			//Dot = ( abs(Dot) > 0.575 ) ? Dot : 0.0;
+			//Dot *= Dot;	//	curve
+
+			//Alpha = mix( 0.3, 1.0, min(1.0,abs(Dot*Dot)) );
+			
+			Colour = mix( Colour, RumBright, Dot );
+			//	specular
+			if ( Dot > 0.96 )
+			{
+				Colour = vec3(1,1,1);
+				Alpha = 1.0;
+			}
+		}
+	}
+	else
+	{
+		//	check if we hit the floor
+		vec4 FloorIntersection = GetSceneIntersection( RayPos, RayDir, true );
+		if ( FloorIntersection.w <= 0.0 )
+			discard;
+			
+		Alpha = 0.0;
+		float GlassDistance = length( Intersection.xyz - RayPos );
+		float FloorDistance = length( FloorIntersection.xyz - RayPos );
+		if ( FloorDistance < GlassDistance )
+		{
+			Intersection = FloorIntersection;
+			ShadowColour = vec3(0,0,0);
+		}
+	}
+
+	
 	//	do a hard shadow pass by shooting a ray to the sun
 	if ( DrawShadows )
 	{
@@ -547,21 +566,14 @@ void main()
 		vec4 LightIntersection = GetSceneIntersection( PositionToLight, DirToLight, IncludeFloor );
 		if ( LightIntersection.w > 0.0 )
 		{
-			//float Shadow = HeatToShadow( LightIntersection.w );
-			//float Shadow = 1.0;
-			float Shadow = Range01( 50.0, 0.0, length( LightIntersection.xyz - Intersection.xyz )+10.0 );
-			Shadow *= LightIntersection.w;
-			Shadow = 0.9;
-			Colour = mix( Colour, vec3(0,0,0), Shadow );
-			Colour = RumDark;
+			Colour = ShadowColour;
+			Alpha = 1.0;
 		}
 	}
 
-	
-	{
-		gl_FragColor = vec4(Colour,Alpha);
-	}
-
+	if ( Alpha <= 0.0 )
+		discard;
+	gl_FragColor = vec4(Colour,Alpha);
 }
 `;
 
