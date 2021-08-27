@@ -206,6 +206,7 @@ export function GetRenderCommands(CameraUniforms,Camera,Assets)
 			Uniforms.DrinkRadius = 0.06;
 			Uniforms.TimeNormal = Time * Time;
 			Uniforms.LiquidSpherePositons = LiquidSpherePositons;
+			
 			Commands.push( ['Draw',DrinkGeo,DrinkShader,Uniforms] );
 		}
 	}

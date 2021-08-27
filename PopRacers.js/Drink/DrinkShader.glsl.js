@@ -494,21 +494,30 @@ void main()
 		return;
 	}
 	
-	vec3 RumBright = vec3(255, 213, 161)/vec3(255,255,255);//	rum
-	vec3 RumMidTone = vec3(227, 147, 43)/vec3(255,255,255);//	rum
-	vec3 RumDark = vec3(128, 49, 0)/vec3(255,255,255);//	rum
+	vec3 RumBright = vec3(255, 163, 64)/vec3(255,255,255);//	rum
+	vec3 RumMidTone = vec3(181, 81, 4)/vec3(255,255,255);//	rum
+	vec3 RumDark = vec3(184, 70, 0)/vec3(255,255,255);//	rum
 	vec3 Colour = RumMidTone;
+	float Alpha = 1.0;
 
 	vec3 Normal = calcNormal(Intersection.xyz);
 	{
 		//Colour = Range3( vec3(-1,-1,-1), vec3(1,1,1), Normal );
 		vec3 DirToLight = normalize( LightPos-Intersection.xyz );
 		float Dot = dot( DirToLight, Normal );
-		Dot = ( abs(Dot) > 0.575 ) ? Dot : 0.0;
+		//	tone mapping
+		//Dot = ( abs(Dot) > 0.575 ) ? Dot : 0.0;
+		//Dot *= Dot;	//	curve
+
+		//Alpha = mix( 0.3, 1.0, min(1.0,abs(Dot*Dot)) );
 		
 		Colour = mix( Colour, RumBright, Dot );
-		if ( Dot > 0.94 )
+		//	specular
+		if ( Dot > 0.96 )
+		{
 			Colour = vec3(1,1,1);
+			Alpha = 1.0;
+		}
 	}
 	//Colour[2] = TimeNormal;
 
@@ -550,7 +559,7 @@ void main()
 
 	
 	{
-		gl_FragColor = vec4(Colour,1);
+		gl_FragColor = vec4(Colour,Alpha);
 	}
 
 }
