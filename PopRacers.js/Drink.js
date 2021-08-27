@@ -120,18 +120,27 @@ export function Update()
 	for ( let fi=0;	fi<LiquidSpherePositons.length;	fi+=4 )
 	{
 		let TimeDelta = 1.0 / 60.0;
-		let Friction = 0.1;
+		let Friction = 0.01;
+		let Spring = 0.4;
+		let BrownianForce = 1.10;
 		 
 		//let i = fi / 4;
 		let v_xyz = LiquidSphereVelocties.slice(fi,fi+3);
 		let xyz = LiquidSpherePositons.slice(fi,fi+3);
 		
-		v_xyz[0] += (Math.random()-0.5) * 0.9;
-		v_xyz[1] += (Math.random()-0.5) * 0.9;
-		v_xyz[2] += (Math.random()-0.5) * 0.9;
-		v_xyz[0] *= 1.0 - Friction;;
-		v_xyz[1] *= 1.0 - Friction;;
-		v_xyz[2] *= 1.0 - Friction;;
+		let SpringTarget = [0,0.5,0];
+		//	spring back to 0
+		v_xyz[0] += SpringTarget[0]-xyz[0] * Spring;
+		v_xyz[1] += SpringTarget[1]-xyz[1] * Spring;
+		v_xyz[2] += SpringTarget[2]-xyz[2] * Spring;
+		
+		v_xyz[0] += (Math.random()-0.5) * BrownianForce;
+		v_xyz[1] += (Math.random()-0.5) * BrownianForce;
+		v_xyz[2] += (Math.random()-0.5) * BrownianForce;
+		v_xyz[0] *= 1.0 - Friction;
+		v_xyz[1] *= 1.0 - Friction;
+		v_xyz[2] *= 1.0 - Friction;
+		
 		
 		xyz[0] += v_xyz[0] * TimeDelta;
 		xyz[1] += v_xyz[1] * TimeDelta;
