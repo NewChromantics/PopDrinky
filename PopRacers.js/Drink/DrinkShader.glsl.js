@@ -349,8 +349,8 @@ uniform vec4 LiquidSpherePositons[LiquidSpherePositonCount];
 
 float DistanceToLiquidSpheres(vec3 Position)
 {
-	float RadiusScaleMin = 0.001;
-	float RadiusScaleMax = 0.03;
+	float RadiusScaleMin = 0.009;
+	float RadiusScaleMax = 0.002;
 	float PositionScale = 1.00;
 	float Distance = 999.0;
 
@@ -417,6 +417,9 @@ float map(vec3 Position)
 {
 	float GlassDistance = DistanceToGlass( Position );
 	float LiquidDistance = DistanceToLiquid( Position );
+	
+	return opSmoothUnion( GlassDistance, LiquidDistance, 0.03 );
+	
 	//float FloorDistance = DistanceToFloor( Position );
 	return min( GlassDistance, LiquidDistance );
 	return LiquidDistance;
