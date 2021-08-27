@@ -415,6 +415,12 @@ float DistanceToSphere(vec3 Position)
 
 float map(vec3 Position,bool IncludeFloor)
 {
+	if ( IncludeFloor )
+	{
+		float FloorDistance = DistanceToFloor( Position );
+		return FloorDistance;
+	}
+	
 	float GlassDistance = DistanceToGlass( Position );
 	float LiquidDistance = DistanceToLiquid( Position );
 	float Distance = opSmoothUnion( GlassDistance, LiquidDistance, 0.03 );
