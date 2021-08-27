@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "BFC333C126925DE400EAFDD9"
-               BuildableName = "PopRacersAppClip.app"
-               BlueprintName = "PopRacersAppClip"
-               ReferencedContainer = "container:PopRacers.xcodeproj">
+               BuildableName = "PopDrinkyAppClip.app"
+               BlueprintName = "PopDrinkyAppClip"
+               ReferencedContainer = "container:PopDrinky.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -45,9 +45,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "BFC333C126925DE400EAFDD9"
-            BuildableName = "PopRacersAppClip.app"
-            BlueprintName = "PopRacersAppClip"
-            ReferencedContainer = "container:PopRacers.xcodeproj">
+            BuildableName = "PopDrinkyAppClip.app"
+            BlueprintName = "PopDrinkyAppClip"
+            ReferencedContainer = "container:PopDrinky.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <EnvironmentVariables>
@@ -69,9 +69,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "BFC333C126925DE400EAFDD9"
-            BuildableName = "PopRacersAppClip.app"
-            BlueprintName = "PopRacersAppClip"
-            ReferencedContainer = "container:PopRacers.xcodeproj">
+            BuildableName = "PopDrinkyAppClip.app"
+            BlueprintName = "PopDrinkyAppClip"
+            ReferencedContainer = "container:PopDrinky.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

@@ -10,7 +10,7 @@
 		BF0A883826925FD90011412E /* PopRacers.js in Resources */ = {isa = PBXBuildFile; fileRef = BFF2289D269227CB00AFAE52 /* PopRacers.js */; };
 		BF269CEE26925A780077D78D /* PopEngine.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF269CED26925A780077D78D /* PopEngine.xcframework */; };
 		BF269CEF26925A780077D78D /* PopEngine.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = BF269CED26925A780077D78D /* PopEngine.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		BFC333D126925DE700EAFDD9 /* PopRacersAppClip.app in Embed App Clips */ = {isa = PBXBuildFile; fileRef = BFC333C226925DE400EAFDD9 /* PopRacersAppClip.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BFC333D126925DE700EAFDD9 /* PopDrinkyAppClip.app in Embed App Clips */ = {isa = PBXBuildFile; fileRef = BFC333C226925DE400EAFDD9 /* PopDrinkyAppClip.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BFC333D726925EA400EAFDD9 /* PopEngineGui.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF2289B2692268600AFAE52 /* PopEngineGui.swift */; };
 		BFC333D926925EA700EAFDD9 /* Bridge.mm in Sources */ = {isa = PBXBuildFile; fileRef = BFF22889269223C700AFAE52 /* Bridge.mm */; };
 		BFC333DB26925EA900EAFDD9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF228682692216800AFAE52 /* ContentView.swift */; };
@@ -66,7 +66,7 @@
 			dstPath = "$(CONTENTS_FOLDER_PATH)/AppClips";
 			dstSubfolderSpec = 16;
 			files = (
-				BFC333D126925DE700EAFDD9 /* PopRacersAppClip.app in Embed App Clips */,
+				BFC333D126925DE700EAFDD9 /* PopDrinkyAppClip.app in Embed App Clips */,
 			);
 			name = "Embed App Clips";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -93,11 +93,11 @@
 		BF6CF4CD269EEA64009CF9D2 /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = SOURCE_ROOT; };
 		BF8DBFD7269F789700B9DEA9 /* PopRacers.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PopRacers.entitlements; sourceTree = "<group>"; };
 		BF8DBFD8269F82C800B9DEA9 /* apple-app-site-association */ = {isa = PBXFileReference; lastKnownFileType = text; path = "apple-app-site-association"; sourceTree = SOURCE_ROOT; };
-		BFC333C226925DE400EAFDD9 /* PopRacersAppClip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PopRacersAppClip.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BFC333C226925DE400EAFDD9 /* PopDrinkyAppClip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PopDrinkyAppClip.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BFC333CD26925DE700EAFDD9 /* AppClipInfo.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = AppClipInfo.plist; sourceTree = "<group>"; };
 		BFC333CE26925DE700EAFDD9 /* PopRacers_AppClip.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PopRacers_AppClip.entitlements; sourceTree = "<group>"; };
 		BFC5ED452694E1FE00EA49EF /* ExternalContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalContent.swift; sourceTree = "<group>"; };
-		BFF228632692216800AFAE52 /* PopRacers.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PopRacers.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BFF228632692216800AFAE52 /* PopDrinky.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PopDrinky.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BFF228662692216800AFAE52 /* PopRacersApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopRacersApp.swift; sourceTree = "<group>"; };
 		BFF228682692216800AFAE52 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		BFF2286A2692216A00AFAE52 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -159,8 +159,8 @@
 		BFF228642692216800AFAE52 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				BFF228632692216800AFAE52 /* PopRacers.app */,
-				BFC333C226925DE400EAFDD9 /* PopRacersAppClip.app */,
+				BFF228632692216800AFAE52 /* PopDrinky.app */,
+				BFC333C226925DE400EAFDD9 /* PopDrinkyAppClip.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -200,9 +200,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		BFC333C126925DE400EAFDD9 /* PopRacersAppClip */ = {
+		BFC333C126925DE400EAFDD9 /* PopDrinkyAppClip */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = BFC333D226925DE700EAFDD9 /* Build configuration list for PBXNativeTarget "PopRacersAppClip" */;
+			buildConfigurationList = BFC333D226925DE700EAFDD9 /* Build configuration list for PBXNativeTarget "PopDrinkyAppClip" */;
 			buildPhases = (
 				BFC333BE26925DE400EAFDD9 /* Sources */,
 				BFC333BF26925DE400EAFDD9 /* Frameworks */,
@@ -213,14 +213,14 @@
 			);
 			dependencies = (
 			);
-			name = PopRacersAppClip;
+			name = PopDrinkyAppClip;
 			productName = "PopRacers AppClip";
-			productReference = BFC333C226925DE400EAFDD9 /* PopRacersAppClip.app */;
+			productReference = BFC333C226925DE400EAFDD9 /* PopDrinkyAppClip.app */;
 			productType = "com.apple.product-type.application.on-demand-install-capable";
 		};
-		BFF228622692216800AFAE52 /* PopRacers */ = {
+		BFF228622692216800AFAE52 /* PopDrinky */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = BFF228722692216A00AFAE52 /* Build configuration list for PBXNativeTarget "PopRacers" */;
+			buildConfigurationList = BFF228722692216A00AFAE52 /* Build configuration list for PBXNativeTarget "PopDrinky" */;
 			buildPhases = (
 				BFF2285F2692216800AFAE52 /* Sources */,
 				BFF228602692216800AFAE52 /* Frameworks */,
@@ -233,9 +233,9 @@
 			dependencies = (
 				BFC333D026925DE700EAFDD9 /* PBXTargetDependency */,
 			);
-			name = PopRacers;
+			name = PopDrinky;
 			productName = PopRacers;
-			productReference = BFF228632692216800AFAE52 /* PopRacers.app */;
+			productReference = BFF228632692216800AFAE52 /* PopDrinky.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -256,7 +256,7 @@
 					};
 				};
 			};
-			buildConfigurationList = BFF2285E2692216800AFAE52 /* Build configuration list for PBXProject "PopRacers" */;
+			buildConfigurationList = BFF2285E2692216800AFAE52 /* Build configuration list for PBXProject "PopDrinky" */;
 			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -269,8 +269,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				BFF228622692216800AFAE52 /* PopRacers */,
-				BFC333C126925DE400EAFDD9 /* PopRacersAppClip */,
+				BFF228622692216800AFAE52 /* PopDrinky */,
+				BFC333C126925DE400EAFDD9 /* PopDrinkyAppClip */,
 			);
 		};
 /* End PBXProject section */
@@ -326,7 +326,7 @@
 /* Begin PBXTargetDependency section */
 		BFC333D026925DE700EAFDD9 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = BFC333C126925DE400EAFDD9 /* PopRacersAppClip */;
+			target = BFC333C126925DE400EAFDD9 /* PopDrinkyAppClip */;
 			targetProxy = BFC333CF26925DE700EAFDD9 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -560,7 +560,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		BFC333D226925DE700EAFDD9 /* Build configuration list for PBXNativeTarget "PopRacersAppClip" */ = {
+		BFC333D226925DE700EAFDD9 /* Build configuration list for PBXNativeTarget "PopDrinkyAppClip" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				BFC333D326925DE700EAFDD9 /* Debug */,
@@ -569,7 +569,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		BFF2285E2692216800AFAE52 /* Build configuration list for PBXProject "PopRacers" */ = {
+		BFF2285E2692216800AFAE52 /* Build configuration list for PBXProject "PopDrinky" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				BFF228702692216A00AFAE52 /* Debug */,
@@ -578,7 +578,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		BFF228722692216A00AFAE52 /* Build configuration list for PBXNativeTarget "PopRacers" */ = {
+		BFF228722692216A00AFAE52 /* Build configuration list for PBXNativeTarget "PopDrinky" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				BFF228732692216A00AFAE52 /* Debug */,
