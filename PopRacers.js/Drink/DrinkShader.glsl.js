@@ -80,7 +80,7 @@ const bool DrawHeat = false;
 uniform float TimeNormal;
 
 const vec3 WorldUp = vec3(0,-1,0);
-const float FloorY = 2.0;
+const float FloorY = 0.1;
 #define FAR_Z		20.0
 #define MAX_STEPS	30
 #define CLOSEENOUGH_FOR_HIT	0.001
@@ -413,19 +413,21 @@ float DistanceToSphere(vec3 Position)
 	return Distance;
 }
 
-float map(vec3 Position)
+float map(vec3 Position,bool IncludeFloor)
 {
 	float GlassDistance = DistanceToGlass( Position );
 	float LiquidDistance = DistanceToLiquid( Position );
+	float Distance = opSmoothUnion( GlassDistance, LiquidDistance, 0.03 );
 	
-	return opSmoothUnion( GlassDistance, LiquidDistance, 0.03 );
-	
-	//float FloorDistance = DistanceToFloor( Position );
-	return min( GlassDistance, LiquidDistance );
-	return LiquidDistance;
+	if ( IncludeFloor )
+	{
+		float FloorDistance = DistanceToFloor( Position );
+		Distance = min( Distance, FloorDistance );
+	}
+	return Distance;
 }
 //	xyz heat (0= toofar/miss)
-vec4 GetSceneIntersection(vec3 RayPos,vec3 RayDir)
+vec4 GetSceneIntersection(vec3 RayPos,vec3 RayDir,bool IncludeFloor)
 {
 	RayDir = normalize(RayDir);
 	const float CloseEnough = CLOSEENOUGH_FOR_HIT;
@@ -444,7 +446,7 @@ vec4 GetSceneIntersection(vec3 RayPos,vec3 RayDir)
 		vec3 Position = RayPos + RayDir * RayTime;
 		
 		//	intersect scene
-		float HitDistance = map( Position );
+		float HitDistance = map( Position, IncludeFloor );
 		if ( HitDistance <= CloseEnough )
 		{
 			float Heat = 1.0 - (float(s)/float(MaxSteps));
@@ -461,18 +463,22 @@ vec4 GetSceneIntersection(vec3 RayPos,vec3 RayDir)
 }
 vec3 calcNormal( in vec3 pos )
 {
+	bool IncludeFloor = false;
 	vec2 e = vec2(1.0,-1.0)*0.5773;
 	const float eps = 0.0005;
-	return normalize( e.xyy * map( pos + e.xyy*eps ) + 
-					  e.yyx * map( pos + e.yyx*eps ) + 
-					  e.yxy * map( pos + e.yxy*eps ) + 
-					  e.xxx * map( pos + e.xxx*eps ) );
+	return normalize( e.xyy * map( pos + e.xyy*eps, IncludeFloor ) + 
+					  e.yyx * map( pos + e.yyx*eps, IncludeFloor ) + 
+					  e.yxy * map( pos + e.yxy*eps, IncludeFloor ) + 
+					  e.xxx * map( pos + e.xxx*eps, IncludeFloor ) );
 }
 float HeatToShadow(float Heat)
 {
 	return Heat > 0.0 ? 1.0 : 0.0;
 	return clamp( Range( 0.0, 0.5, Heat ), 0.0, 1.0 );
 }
+
+const vec3 LightPos = vec3( 0.6, 2.0, 1.2 );
+
 void main()
 {
 	vec3 Background = vec3(0.70,0.75,0.79);
@@ -480,7 +486,7 @@ void main()
 
 	vec3 RayPos,RayDir;
 	GetWorldRay(RayPos,RayDir);
-	vec4 Intersection = GetSceneIntersection( RayPos, RayDir );
+	vec4 Intersection = GetSceneIntersection( RayPos, RayDir, false );
 	if ( Intersection.w <= 0.0 )
 	{
 		gl_FragColor = vec4(Background,0.0);
@@ -490,13 +496,14 @@ void main()
 	
 	vec3 RumBright = vec3(255, 213, 161)/vec3(255,255,255);//	rum
 	vec3 RumMidTone = vec3(227, 147, 43)/vec3(255,255,255);//	rum
+	vec3 RumDark = vec3(128, 49, 0)/vec3(255,255,255);//	rum
 	vec3 Colour = RumMidTone;
 
 	vec3 Normal = calcNormal(Intersection.xyz);
 	{
 		//Colour = Range3( vec3(-1,-1,-1), vec3(1,1,1), Normal );
-		vec3 LightDir = normalize( vec3( 0.4, 0.9, 0.2 ) );
-		float Dot = dot( LightDir, Normal );
+		vec3 DirToLight = normalize( LightPos-Intersection.xyz );
+		float Dot = dot( DirToLight, Normal );
 		Dot = ( abs(Dot) > 0.575 ) ? Dot : 0.0;
 		
 		Colour = mix( Colour, RumBright, Dot );
@@ -520,16 +527,15 @@ void main()
 		gl_FragColor = vec4( Shadow, Shadow, Shadow, 1.0);
 		return;
 	}
-	
+	*/
 	//	do a hard shadow pass by shooting a ray to the sun
 	if ( DrawShadows )
 	{
-		//vec3 DirToLight = vec3(0.001,-0.99,0.001);
-		vec3 LightPos = vec3( sin(TimeSecs)*20.0, 50.0, cos(TimeSecs)*20.0 );
-		vec3 DirToLight = normalize(Intersection.xyz - LightPos);
+		vec3 DirToLight = normalize(LightPos - Intersection.xyz);
 		//vec3 PositionToLight = Intersection.xyz+(Normal*0.002);
-		vec3 PositionToLight = Intersection.xyz+(DirToLight*0.001);
-		vec4 LightIntersection = GetSceneIntersection( PositionToLight, DirToLight );
+		vec3 PositionToLight = Intersection.xyz+(DirToLight*0.01);
+		bool IncludeFloor = false;
+		vec4 LightIntersection = GetSceneIntersection( PositionToLight, DirToLight, IncludeFloor );
 		if ( LightIntersection.w > 0.0 )
 		{
 			//float Shadow = HeatToShadow( LightIntersection.w );
@@ -538,10 +544,10 @@ void main()
 			Shadow *= LightIntersection.w;
 			Shadow = 0.9;
 			Colour = mix( Colour, vec3(0,0,0), Shadow );
-			//Colour = vec3(0,0,0);
+			Colour = RumDark;
 		}
 	}
-*/
+
 	
 	{
 		gl_FragColor = vec4(Colour,1);
