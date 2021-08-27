@@ -53,8 +53,8 @@ export function OnClickMap(WorldPos,WorldRay,FirstDown)
 			DrinkTop = PopMath.Add3( DrinkBottom, [0,0.15,0] );
 		}
 	}
-	//else if ( DrinkBottom )
-	else if ( !DrinkTop && DrinkBottom )
+	else if ( DrinkBottom )
+	//else if ( !DrinkTop && DrinkBottom )
 	{
 		//	need to find the Y above drinkbottom that we're pointing at
 		//	so get two rays, drink up, and our ray
@@ -106,6 +106,10 @@ export function Update()
 					let xf = x / (LiquidSphereDim-1);
 					let yf = y / (LiquidSphereDim-1);
 					let zf = z / (LiquidSphereDim-1);
+					let PositionScale = 0.1;
+					xf *= PositionScale;
+					yf *= PositionScale;
+					zf *= PositionScale;
 					let Radius = Math.random();
 					LiquidSpherePositons.push( xf, yf, zf, Radius );
 					LiquidSphereVelocties.push(0,0,0,0);
@@ -120,19 +124,19 @@ export function Update()
 	for ( let fi=0;	fi<LiquidSpherePositons.length;	fi+=4 )
 	{
 		let TimeDelta = 1.0 / 60.0;
-		let Friction = 0.01;
-		let Spring = 0.4;
-		let BrownianForce = 1.10;
+		let Friction = 0.03;
+		let Spring = 0.2;
+		let BrownianForce = 0.20;
 		 
 		//let i = fi / 4;
 		let v_xyz = LiquidSphereVelocties.slice(fi,fi+3);
 		let xyz = LiquidSpherePositons.slice(fi,fi+3);
 		
-		let SpringTarget = [0,0.5,0];
+		let SpringTarget = DrinkTop ? DrinkTop.slice() : [0,0.0,0];
 		//	spring back to 0
-		v_xyz[0] += SpringTarget[0]-xyz[0] * Spring;
-		v_xyz[1] += SpringTarget[1]-xyz[1] * Spring;
-		v_xyz[2] += SpringTarget[2]-xyz[2] * Spring;
+		v_xyz[0] += (SpringTarget[0]-xyz[0]) * Spring;
+		v_xyz[1] += (SpringTarget[1]-xyz[1]) * Spring;
+		v_xyz[2] += (SpringTarget[2]-xyz[2]) * Spring;
 		
 		v_xyz[0] += (Math.random()-0.5) * BrownianForce;
 		v_xyz[1] += (Math.random()-0.5) * BrownianForce;

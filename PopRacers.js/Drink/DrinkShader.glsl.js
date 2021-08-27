@@ -340,7 +340,7 @@ uniform vec4 LiquidSpherePositons[LiquidSpherePositonCount];
 float DistanceToLiquidSpheres(vec3 Position)
 {
 	float RadiusScale = 0.04;
-	float PositionScale = 0.10;
+	float PositionScale = 1.00;
 	float Distance = 999.0;
 
 	for ( int i=0;	i<LiquidSpherePositonCount;	i++ )
@@ -405,7 +405,7 @@ float map(vec3 Position)
 	float GlassDistance = DistanceToGlass( Position );
 	float LiquidDistance = DistanceToLiquid( Position );
 	//float FloorDistance = DistanceToFloor( Position );
-	//return min( SphereDistance, FloorDistance );
+	return min( GlassDistance, LiquidDistance );
 	return LiquidDistance;
 }
 //	xyz heat (0= toofar/miss)
