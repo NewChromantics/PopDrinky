@@ -79,11 +79,62 @@ const bool DrawHeat = false;
 
 uniform float TimeNormal;
 
+#define Material_None		0.0
+#define Material_Liquid		1.0
+#define Material_Floor		2.0
+#define Material_BrownSugar	3.0
+#define IntersectionMat_t	vec4
+#define DistanceMaterial_t	vec2
+
+//#define FLOOR_PLANE_VISIBLE
+#if defined(FLOOR_PLANE_VISIBLE)
+const vec4 FloorColour = vec4(1,1,0,1);
+#else
+const vec4 FloorColour = vec4(0,0,0,0);
+#endif
+
+const vec3 BrownSugarColour = vec3(110, 64, 8)/vec3(255,255,255);
+const vec3 LightPos = vec3( 0.6, 2.0, 1.2 );
+
 const vec3 WorldUp = vec3(0,-1,0);
 const float FloorY = 0.1;
 #define FAR_Z		20.0
-#define MAX_STEPS	30
+#define MAX_STEPS	20
 #define CLOSEENOUGH_FOR_HIT	0.001
+
+
+const float BottomHeightPercent = 0.3;
+const float TopHeightPercent = 0.5;
+const float FlyHeight = 0.3;
+#define LiquidSpherePositionCount	25
+uniform vec4 LiquidSpherePositions[LiquidSpherePositionCount];
+
+#define IngredientPositionCount	2
+uniform vec4 IngredientPositions[IngredientPositionCount];
+
+
+
+vec3 NormalToRedGreen(float Normal)
+{
+	if ( Normal < 0.0 )
+	{
+		return vec3( 1,0,1 );
+	}
+	else if ( Normal < 0.5 )
+	{
+		Normal = Normal / 0.5;
+		return vec3( 1, Normal, 0 );
+	}
+	else if ( Normal <= 1.0 )
+	{
+		Normal = (Normal-0.5) / 0.5;
+		return vec3( 1.0-Normal, 1, 0 );
+	}
+	
+	//	>1
+	return vec3( 0,0,1 );
+}
+
 float Range(float Min,float Max,float Value)
 {
 	return (Value-Min) / (Max-Min);
@@ -239,19 +290,17 @@ float DistanceToGlass(vec3 Position)
 	return Distance;
 }
 
-const float BottomHeightPercent = 0.3;
-const float TopHeightPercent = 0.5;
-const float FlyHeight = 0.3;
-
 float DistanceToLiquidBottom(vec3 Position)
 {
 	vec3 Bottom = WorldBoundsBottom;
+	float BottomHeightPercent = 1.0 - TimeNormal;
+	BottomHeightPercent = max( BottomHeightPercent, 0.3 );
 	vec3 BottomChunk = (WorldBoundsTop - WorldBoundsBottom) * BottomHeightPercent;
 	vec3 Top = Bottom + BottomChunk;
 	float Distance = DistanceToCappedCylinder_StartEnd( Position, Bottom, Top, DrinkRadius );
 	
 	//	smooth edges
-	Distance -= 0.01;
+	//Distance -= 0.01;
 	return Distance;
 }
 
@@ -329,6 +378,110 @@ float DistanceToSphere(vec3 Position,vec3 Center,float Radius)
 	return Distance;
 }
 
+mat4 rotationX( in float angle ) {
+	return mat4(	1.0,		0,			0,			0,
+			 		0, 	cos(angle),	-sin(angle),		0,
+					0, 	sin(angle),	 cos(angle),		0,
+					0, 			0,			  0, 		1);
+}
+
+mat4 rotationY( in float angle ) {
+	return mat4(	cos(angle),		0,		sin(angle),	0,
+			 				0,		1.0,			 0,	0,
+					-sin(angle),	0,		cos(angle),	0,
+							0, 		0,				0,	1);
+}
+
+mat4 rotationZ( in float angle ) {
+	return mat4(	cos(angle),		-sin(angle),	0,	0,
+			 		sin(angle),		cos(angle),		0,	0,
+							0,				0,		1,	0,
+							0,				0,		0,	1);
+}
+
+float DistanceToIngredients(vec3 Position)
+{
+	float CubeRadiusMin = 0.015;
+	//CubeRadiusMin *= TimeNormal;//	just aids hiding
+	float CubeRadiusMax = CubeRadiusMin;
+	
+	float Distance = 999.0;
+
+	for ( int i=0;	i<IngredientPositionCount;	i++ )
+	{
+		vec3 IngredientPos = IngredientPositions[i].xyz;
+
+		float GridCount = 14.0; 
+		
+		float CubeRadius = IngredientPositions[i].w;
+		CubeRadius = mix( CubeRadiusMin, CubeRadiusMax, CubeRadius );
+		vec3 CubeLocalPos = vec3(0,0,0);
+		//float CubeLocalRadius = CubeRadius / GridCount;
+		float CubeLocalRadius = CubeRadius;
+	
+	
+	
+		//	find the nearest local cube
+		vec3 LocalPos = Position - IngredientPos;
+		LocalPos /= CubeRadius * 2.0;
+		LocalPos = clamp( LocalPos, vec3(-1,-1,-1), vec3(1,1,1) );
+/*
+vec3 GriddedLocalPos = floor(LocalPos * GridCount)/GridCount;
+float Random = rand(GriddedLocalPos);
+//CubeLocalRadius += Random * 0.01;
+//LocalPos.y += Random * 0.11;
+LocalPos -= GriddedLocalPos + (0.5 /GridCount);
+LocalPos = (rotationY(TimeNormal) * vec4(LocalPos,0.0)).xyz;
+LocalPos = (rotationX(Random) * vec4(LocalPos,0.0)).xyz;
+LocalPos += GriddedLocalPos  + (0.5 /GridCount);
+		
+		//	back to world space size
+		LocalPos *= CubeRadius * 2.0;
+
+		CubeLocalPos = LocalPos;
+
+		//	turn into small cubes
+		//	find the closest in local space
+		
+		
+		//	back to world pos
+		//IngredientPos = LocalPos * CubeRadius * 2.0;
+/*
+		//	turn into small cubes
+		vec3 LocalPos = Position - IngredientPos;
+		LocalPos /= CubeRadius;
+		float GridCount = 4.0; 
+		LocalPos = floor(LocalPos * GridCount)/GridCount;
+		float Random = rand(LocalPos);
+		CubeRadius *= Random;
+	*/
+		vec3 CubePos = IngredientPos + CubeLocalPos;
+		float NewDistance = DistanceToBox( Position, CubePos, vec3(CubeLocalRadius,CubeLocalRadius,CubeLocalRadius) );
+
+/*
+		//	distort in grid
+		//	not awful... has potential
+		float GridCount = 10.0; 
+		LocalPos = floor(LocalPos * GridCount)/GridCount;
+		float Random = rand(LocalPos);
+		//float Random = LocalPos.x;
+		NewDistance += Random * 0.01;
+	*/
+		//float GridCount = 90.0; 
+		GridCount = 50.0; 
+		LocalPos = floor(LocalPos * GridCount)/GridCount;
+		float Random = rand(LocalPos);
+		//float Random = LocalPos.x;
+		NewDistance += Random * 0.0009;
+
+		
+		Distance = min( Distance, NewDistance );
+	}
+
+	return Distance;
+}
+
+
 float DistanceToLiquidBounds(vec3 Position)
 {
 	//	glass bounds
@@ -343,33 +496,33 @@ float DistanceToLiquidBounds(vec3 Position)
 	return opUnion( Glass, Above );
 }
 
-#define LiquidSphereDim	3
-#define LiquidSpherePositonCount	(LiquidSphereDim*LiquidSphereDim*LiquidSphereDim)
-uniform vec4 LiquidSpherePositons[LiquidSpherePositonCount];
 
 float DistanceToLiquidSpheres(vec3 Position)
 {
-	float RadiusScaleMin = 0.009;
-	float RadiusScaleMax = 0.002;
+	float RadiusScaleMin = 0.002;
+	float RadiusScaleMax = 0.009;
 	float PositionScale = 1.00;
 	float Distance = 999.0;
+	float SmoothkMin = 0.03;
+	float SmoothkMax = 0.05;
+	float Smoothk = mix( SmoothkMin, SmoothkMax, 1.0-TimeNormal );
 
-	for ( int i=0;	i<LiquidSpherePositonCount;	i++ )
+	for ( int i=0;	i<LiquidSpherePositionCount;	i++ )
 	{
 		//	todo: put input into local space, instead of scaling liquid pos 
-		vec3 LiquidPos = LiquidSpherePositons[i].xyz * vec3(PositionScale,PositionScale,PositionScale);
+		vec3 LiquidPos = LiquidSpherePositions[i].xyz * vec3(PositionScale,PositionScale,PositionScale);
 		
-		float LiquidRadius = LiquidSpherePositons[i].w;
+		float LiquidRadius = LiquidSpherePositions[i].w;
 		LiquidRadius = mix( RadiusScaleMin, RadiusScaleMax, LiquidRadius );
 
 		//	dont let liquid go below surface
 		LiquidPos.y = max( LiquidPos.y-LiquidRadius, WorldBoundsBottom.y );
 
+		//	this is sphere distance
 		LiquidPos -= Position;
 		float NewDistance = length( LiquidPos );
 		NewDistance -= LiquidRadius;
 		
-		float Smoothk = 0.04;
 		Distance = opSmoothUnion(Distance,NewDistance,Smoothk);
 		//Distance = min( Distance, NewDistance );
 	}
@@ -384,16 +537,24 @@ float DistanceToLiquidSpheres(vec3 Position)
 
 float DistanceToLiquid(vec3 Position)
 {
-	return DistanceToLiquidSpheres(Position);
+	float LiquidDistance = DistanceToLiquidSpheres(Position);
+	
 	float Bottom = DistanceToLiquidBottom(Position);
+	float Smoothk = 0.04;
+	//LiquidDistance = opSmoothUnion(Bottom,Top,Smoothk);
+	LiquidDistance = opSmoothUnion(LiquidDistance,Bottom,Smoothk);
+	//LiquidDistance = opUnion(LiquidDistance,Bottom);
+
+
+	/*
 	float Top = DistanceToLiquidTop(Position);
 	//	blend together
 	float Smoothk = 0.0015;
 	float LiquidDistance = opSmoothUnion(Bottom,Top,Smoothk);
-	
+	LiquidDistance = opSmoothUnion(LiquidDistance,Liquid,Smoothk);
+	*/
 	//	strict intersection(AND) with glass shape
 	float LiquidBounds = DistanceToLiquidBounds(Position);
-	
 	float Distance = opIntersection( LiquidBounds, LiquidDistance );
 	return Distance;
 }
@@ -413,77 +574,191 @@ float DistanceToSphere(vec3 Position)
 	return Distance;
 }
 
-float map(vec3 Position,bool IncludeFloor)
+DistanceMaterial_t NearestMaterial(DistanceMaterial_t a,DistanceMaterial_t b)
 {
-	if ( IncludeFloor )
-	{
-		float FloorDistance = DistanceToFloor( Position );
-		return FloorDistance;
-	}
-	
-	float GlassDistance = DistanceToGlass( Position );
-	float LiquidDistance = DistanceToLiquid( Position );
-	float Distance = opSmoothUnion( GlassDistance, LiquidDistance, 0.03 );
-	
-	if ( IncludeFloor )
-	{
-		float FloorDistance = DistanceToFloor( Position );
-		Distance = min( Distance, FloorDistance );
-	}
-	return Distance;
+	return (a.x < b.x) ? a : b;
 }
-//	xyz heat (0= toofar/miss)
-vec4 GetSceneIntersection(vec3 RayPos,vec3 RayDir,bool IncludeFloor)
+
+DistanceMaterial_t map(vec3 Position)
+{
+	//float GlassDistance = DistanceToGlass( Position );
+	float LiquidDistance = DistanceToLiquid( Position );
+	//float Distance = opSmoothUnion( GlassDistance, LiquidDistance, 0.03 );
+	float Distance = LiquidDistance;
+	DistanceMaterial_t Liquid = DistanceMaterial_t( Distance, Material_Liquid );
+	//return Liquid;
+	
+	DistanceMaterial_t Ingredient = DistanceMaterial_t( DistanceToIngredients(Position), Material_BrownSugar );
+	//return Ingredient;
+	
+	//DistanceMaterial_t Floor = vec2( DistanceToFloor( Position ), Material_Floor );
+	//return NearestMaterial( Liquid, Floor );
+	return NearestMaterial( Liquid, Ingredient );
+	return Liquid;
+}
+
+
+//	w = material
+vec4 GetSceneIntersection(vec3 RayPos,vec3 RayDir)
 {
 	RayDir = normalize(RayDir);
 	const float CloseEnough = CLOSEENOUGH_FOR_HIT;
 	const float MinStep = CloseEnough;
-	const float MaxDistance = FAR_Z;
 	const int MaxSteps = MAX_STEPS;
-	
-	//return vec4( RayPos, 1.0 );
-	//return vec4( RayPos + RayDir * 1.0, 1.0 );
-	
+
 	//	time = distance
 	float RayTime = 0.0;
+	float MaxDistance = FAR_Z;
+
+	vec4 MarchMissHit = vec4(0,0,0,Material_None);
+
+	//	ray trace to floor, and set our fail intersection to the floor
+	//	we can also cut back max distance
+	DistanceMaterial_t FloorHit = vec2( DistanceToFloor( RayPos ), Material_Floor );
+	{
+		// raytrace floor plane
+		//float tp1 = dot(WorldBoundsBottom - RayPos, vec3(0,1,0)) / dot(RayDir, vec3(0,1,0) );
+		float tp1 = (WorldBoundsBottom.y-RayPos.y)/RayDir.y;
+		if ( tp1 > 0.0 )
+		{
+			MaxDistance = min( MaxDistance, tp1 );
+			//res = vec2( tp1, 1.0 );
+			FloorHit.x = tp1;	//	gr: why is floorhit distance wrong?
+			MarchMissHit = vec4( RayPos + RayDir * FloorHit.x, FloorHit.y );
+		}
+	}
 	
 	for ( int s=0;	s<MaxSteps;	s++ )
 	{
 		vec3 Position = RayPos + RayDir * RayTime;
 		
 		//	intersect scene
-		float HitDistance = map( Position, IncludeFloor );
+		DistanceMaterial_t HitDistanceMaterial = map( Position);
+		float HitDistance = HitDistanceMaterial.x;
+	
 		if ( HitDistance <= CloseEnough )
 		{
-			float Heat = 1.0 - (float(s)/float(MaxSteps));
-			return vec4( Position, Heat );
+			//float Heat = 1.0 - (float(s)/float(MaxSteps));
+			return vec4( Position, HitDistanceMaterial.y );
 		}
 		RayTime += max( HitDistance, MinStep );
 		
 		//	ray gone too far
 		if (RayTime > MaxDistance)
-			return vec4(Position,0);
+			break;
 	}
 	
-	return vec4(0,0,0,0);
+	return MarchMissHit;
 }
+
+
+
 vec3 calcNormal( in vec3 pos )
 {
-	bool IncludeFloor = false;
 	vec2 e = vec2(1.0,-1.0)*0.5773;
 	const float eps = 0.0005;
-	return normalize( e.xyy * map( pos + e.xyy*eps, IncludeFloor ) + 
-					  e.yyx * map( pos + e.yyx*eps, IncludeFloor ) + 
-					  e.yxy * map( pos + e.yxy*eps, IncludeFloor ) + 
-					  e.xxx * map( pos + e.xxx*eps, IncludeFloor ) );
+	return normalize( e.xyy * map( pos + e.xyy*eps ).x + 
+					  e.yyx * map( pos + e.yyx*eps ).x + 
+					  e.yxy * map( pos + e.yxy*eps ).x + 
+					  e.xxx * map( pos + e.xxx*eps ).x );
 }
+
+
+void GetSceneIntersectionNew(vec3 RayPos,vec3 RayDir,out vec3 IntersectionPosition,out vec3 IntersectionNormal,out float IntersectionMaterial,out float IntersectionHeat)
+{
+	vec4 Int = GetSceneIntersection( RayPos, RayDir );
+	IntersectionMaterial = Int.w;
+	IntersectionHeat = 0.0;
+	IntersectionPosition = Int.xyz;
+	IntersectionNormal = calcNormal(IntersectionPosition);
+}
+
+
+vec4 GetLiquidColour(vec3 WorldPosition,vec3 WorldNormal)
+{
+	vec3 RumBright = vec3(255, 163, 64)/vec3(255,255,255);//	rum
+	vec3 RumMidTone = vec3(181, 81, 4)/vec3(255,255,255);//	rum
+	vec3 RumDark = vec3(184, 70, 0)/vec3(255,255,255);//	rum
+	//ShadowColour = RumDark;
+	vec3 Colour = RumMidTone;
+		
+	vec3 Normal = WorldNormal;
+	//Colour = Range3( vec3(-1,-1,-1), vec3(1,1,1), Normal );
+	vec3 DirToLight = normalize( LightPos-WorldPosition );
+	float Dot = dot( DirToLight, Normal );
+	//	tone mapping
+	//Dot = ( abs(Dot) > 0.575 ) ? Dot : 0.0;
+	//Dot *= Dot;	//	curve
+
+	Colour = mix( Colour, RumBright, Dot );
+	
+	//Colour = NormalToRedGreen(TimeNormal);
+	
+	//	specular
+	if ( Dot > 0.96 )
+		Colour = vec3(1,1,1);
+		
+	return vec4( Colour, 1.0 );
+}
+
+
+vec4 GetBrownSugarColour(vec3 WorldPosition,vec3 WorldNormal)
+{
+	float Random = 0.0;
+	/*
+	//	sparkle
+	vec3 LocalPosition = WorldPosition - IngredientPositions[0].xyz;
+	
+	//	divide into grid
+	float CubeRadiusMin = 0.01;
+	LocalPosition /= CubeRadiusMin * 2.0;
+	float GridCount = 4.0; 
+	LocalPosition = floor(LocalPosition * GridCount)/GridCount;
+	
+	float Random = rand(LocalPosition);
+	//return vec4( Random, Random, Random, 1.0 );
+*/
+	vec3 DirToLight = normalize( LightPos-WorldPosition );
+	float LightDot = dot( DirToLight, WorldNormal );
+	
+	LightDot -= Random * 0.5;
+
+	if ( LightDot > 0.95 )
+		return vec4( 1,1,1,1 );
+
+	vec3 BrownSugarColourBright = min( vec3(1.0,1.0,1.0), BrownSugarColour * 1.8);
+
+	vec3 Colour = BrownSugarColour;
+
+	Colour = mix( Colour, BrownSugarColourBright, LightDot );
+
+	return vec4(Colour,1.0);
+}
+
+//	todo: reflecton & refraction via material
+//	w = alpha
+//	todo: will later expand to allow reflection light
+//			absorb shadows
+//			ignore shadows
+vec4 GetMaterialColour(float Material,vec3 WorldPosition,vec3 WorldNormal)
+{
+	if ( Material == Material_None )		return vec4(1,0,1,0);
+	if ( Material == Material_Liquid )		return GetLiquidColour(WorldPosition,WorldNormal);
+	if ( Material == Material_Floor )		return FloorColour;
+	if ( Material == Material_BrownSugar )	return GetBrownSugarColour(WorldPosition,WorldNormal);
+	if ( int(Material) == 4 )				return vec4(0,1,1,1);
+
+
+	return vec4(0,0,1,1);
+}
+
+
 float HeatToShadow(float Heat)
 {
 	return Heat > 0.0 ? 1.0 : 0.0;
 	return clamp( Range( 0.0, 0.5, Heat ), 0.0, 1.0 );
 }
 
-const vec3 LightPos = vec3( 0.6, 2.0, 1.2 );
 
 void main()
 {
@@ -492,12 +767,15 @@ void main()
 
 	vec3 RayPos,RayDir;
 	GetWorldRay(RayPos,RayDir);
-	vec4 Intersection = GetSceneIntersection( RayPos, RayDir, false );
-	
+
+	vec3 IntersectionPosition,IntersectionNormal;
+	float IntersectionMaterial;
+	float IntersectionHeat;
+	GetSceneIntersectionNew( RayPos, RayDir, IntersectionPosition, IntersectionNormal, IntersectionMaterial, IntersectionHeat );
 	
 	if ( DrawNormals )
 	{
-		vec3 Normal = calcNormal(Intersection.xyz);
+		vec3 Normal = IntersectionNormal;
 		Normal = Range3( vec3(-1,-1,-1), vec3(1,1,1), Normal );
 		gl_FragColor = vec4( Normal,1.0);
 		return;
@@ -505,45 +783,25 @@ void main()
 	
 	if ( DrawHeat )
 	{
-		float Shadow = HeatToShadow( Intersection.w );
+		float Shadow = HeatToShadow( IntersectionHeat );
 		gl_FragColor = vec4( Shadow, Shadow, Shadow, 1.0);
 		return;
 	}
 	
-	//	hit liquid
-	vec3 Colour = vec3(0,1,0);
-	vec3 ShadowColour;
-	float Alpha = 1.0;
+	vec4 Colour = vec4(0,1,0,1);
+	float ShadowMult = 0.5;
 	
-	if ( Intersection.w > 0.0 )
+	if ( IntersectionMaterial == Material_None )
+		discard;
+	
+	//	hit liquid
+	if ( IntersectionMaterial != Material_None )
 	{
-		vec3 RumBright = vec3(255, 163, 64)/vec3(255,255,255);//	rum
-		vec3 RumMidTone = vec3(181, 81, 4)/vec3(255,255,255);//	rum
-		vec3 RumDark = vec3(184, 70, 0)/vec3(255,255,255);//	rum
-		ShadowColour = RumDark;
-		Colour = RumMidTone;
-		
-
-		vec3 Normal = calcNormal(Intersection.xyz);
-		{
-			//Colour = Range3( vec3(-1,-1,-1), vec3(1,1,1), Normal );
-			vec3 DirToLight = normalize( LightPos-Intersection.xyz );
-			float Dot = dot( DirToLight, Normal );
-			//	tone mapping
-			//Dot = ( abs(Dot) > 0.575 ) ? Dot : 0.0;
-			//Dot *= Dot;	//	curve
-
-			//Alpha = mix( 0.3, 1.0, min(1.0,abs(Dot*Dot)) );
-			
-			Colour = mix( Colour, RumBright, Dot );
-			//	specular
-			if ( Dot > 0.96 )
-			{
-				Colour = vec3(1,1,1);
-				Alpha = 1.0;
-			}
-		}
+		Colour = GetMaterialColour( IntersectionMaterial, IntersectionPosition, IntersectionNormal );
 	}
+	
+	
+	/*
 	else
 	{
 		//	check if we hit the floor
@@ -552,34 +810,38 @@ void main()
 			discard;
 			
 		Alpha = 0.0;
-		float GlassDistance = length( Intersection.xyz - RayPos );
+		float GlassDistance = length( IntersectionPosition - RayPos );
 		float FloorDistance = length( FloorIntersection.xyz - RayPos );
 		if ( FloorDistance < GlassDistance )
 		{
-			Intersection = FloorIntersection;
+			IntersectionPosition = FloorIntersection.xyz;
 			ShadowColour = vec3(0,0,0);
 		}
 	}
-
+	*/
 	
 	//	do a hard shadow pass by shooting a ray to the sun
-	if ( DrawShadows )
+	//	todo: material property, can/not absorb shadow
+	bool MaterialAbsorbShadow = true;
+	if ( DrawShadows && MaterialAbsorbShadow )
 	{
-		vec3 DirToLight = normalize(LightPos - Intersection.xyz);
+		vec3 DirToLight = normalize(LightPos - IntersectionPosition);
 		//vec3 PositionToLight = Intersection.xyz+(Normal*0.002);
-		vec3 PositionToLight = Intersection.xyz+(DirToLight*0.01);
-		bool IncludeFloor = false;
-		vec4 LightIntersection = GetSceneIntersection( PositionToLight, DirToLight, IncludeFloor );
-		if ( LightIntersection.w > 0.0 )
+		vec3 PositionToLight = IntersectionPosition+(DirToLight*0.01);
+		vec4 LightIntersection = GetSceneIntersection( PositionToLight, DirToLight );
+		
+		//	hit something
+		if ( LightIntersection.w != Material_None )
 		{
-			Colour = ShadowColour;
-			Alpha = 1.0;
+			//Colour = ShadowColour;
+			Colour.xyz *= ShadowMult;
+			Colour.w = 1.0;
 		}
 	}
 
-	if ( Alpha <= 0.0 )
+	if ( Colour.w <= 0.0 )
 		discard;
-	gl_FragColor = vec4(Colour,Alpha);
+	gl_FragColor = Colour;
 }
 `;
 

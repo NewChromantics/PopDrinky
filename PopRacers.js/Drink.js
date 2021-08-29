@@ -16,6 +16,9 @@ let DrinkGeoAttribs = null;
 let DrinkBottom = null;
 let DrinkTop = null;
 let PendingPosition = null;
+let DrinkRadius = 0.06;
+let UserTime = 0;
+let UserTop = null;
 
 export function OnHoverMap(WorldPos,WorldRay,FirstDown)
 {
@@ -23,16 +26,21 @@ export function OnHoverMap(WorldPos,WorldRay,FirstDown)
 
 export function OnUnclickMap()
 {
-	if ( PendingPositon )
+	if ( PendingPosition )
 	{
 		if ( !DrinkBottom )
 		{
 			DrinkBottom = PendingPosition;
 			PendingPosition = null;
 		}	
-		else
+		else if ( !DrinkTop )
 		{
 			DrinkTop = PendingPosition;
+			PendingPosition = null;
+		}
+		else
+		{
+			UserTop = PendingPosition;
 			PendingPosition = null;
 		}
 	}
@@ -53,8 +61,8 @@ export function OnClickMap(WorldPos,WorldRay,FirstDown)
 			DrinkTop = PopMath.Add3( DrinkBottom, [0,0.15,0] );
 		}
 	}
-	else if ( DrinkBottom )
-	//else if ( !DrinkTop && DrinkBottom )
+	//else if ( DrinkBottom )
+	else if ( !DrinkTop && DrinkBottom )
 	{
 		//	need to find the Y above drinkbottom that we're pointing at
 		//	so get two rays, drink up, and our ray
@@ -65,6 +73,24 @@ export function OnClickMap(WorldPos,WorldRay,FirstDown)
 		
 		NewDrinkTop[1] = Math.max( DrinkBottom[1], NewDrinkTop[1] );
 		DrinkTop = NewDrinkTop;
+	}
+	else
+	{
+		//	need to find the Y above drinkbottom that we're pointing at
+		//	so get two rays, drink up, and our ray
+		//	then find the nearest point on the drink line
+		const DrinkUp = [0,1,0];
+		const Result = PopMath.GetRayRayIntersection3( DrinkBottom, DrinkUp, WorldRay.Start, WorldRay.Direction );
+		let NewDrinkTop = PopMath.GetRayPositionAtTime( DrinkBottom, DrinkUp, Result.IntersectionTimeA );
+		
+		NewDrinkTop[1] = Math.max( DrinkBottom[1], NewDrinkTop[1] );
+		UserTop = NewDrinkTop;
+		
+		let UserBottomDistance = 0.1;
+		let UserTopDistance = 0.3;
+		let UserDistance = PopMath.Distance3( DrinkBottom, NewDrinkTop );
+		UserTime = PopMath.RangeClamped( UserBottomDistance, UserTopDistance, UserDistance );
+		//UserTime = PopMath.Clamp01( UserTime );
 	}
 }
 
@@ -87,72 +113,144 @@ export async function LoadAssets(RenderContext)
 }
 
 
-let LiquidSpherePositons = null;
-let LiquidSphereVelocties = null;
-let LiquidSphereDim = 4;
+class PhysicsSet_t
+{
+	constructor(Bottom,Top,RadiusZero,RadiusOne,Count)
+	{
+		let OneBottom = Top.slice();
+		let OneTop = PopMath.Add3( Top, [0,0.3,0] );
+		let ZeroTop = PopMath.Subtract3( Top, [0,RadiusZero,0] );
+		
+		this.ZeroPositions = RandomPositionsInsideCylinder(Bottom,ZeroTop,RadiusZero,Count);
+		this.OnePositions = RandomPositionsInsideCylinder(OneBottom,OneTop,RadiusOne,Count);
+		
+		this.Positions = this.ZeroPositions.slice();
+		this.Velocities = new Array(this.Positions.length).fill(0);
+		
+		this.Positions = new Float32Array(this.Positions);
+		this.Velocities = new Float32Array(this.Velocities);
+	}
+	
+	Update(Params)
+	{
+		//	update each pos
+		for ( let fi=0;	fi<this.Positions.length;	fi+=4 )
+		{
+			let TimeDelta = Params.Speed / 60.0;
+			let Friction = Params.Friction;
+			let Spring = Params.Spring;
+			let BrownianForce = Params.BrownianForce;
+			 
+			//let i = fi / 4;
+			let v_xyz = this.Velocities.slice(fi,fi+3);
+			let xyz = this.Positions.slice(fi,fi+3);
+			
+			//let SpringTarget = Params.SpringTarget;
+			let SpringTargetA = this.ZeroPositions.slice(fi,fi+3);
+			let SpringTargetB = this.OnePositions.slice(fi,fi+3);
+			let SpringTarget = PopMath.Lerp3( SpringTargetA, SpringTargetB, UserTime );
+		
+			//	spring back to 0
+			v_xyz[0] += (SpringTarget[0]-xyz[0]) * Spring;
+			v_xyz[1] += (SpringTarget[1]-xyz[1]) * Spring;
+			v_xyz[2] += (SpringTarget[2]-xyz[2]) * Spring;
+			
+			v_xyz[0] += (Math.random()-0.5) * BrownianForce;
+			v_xyz[1] += (Math.random()-0.5) * BrownianForce;
+			v_xyz[2] += (Math.random()-0.5) * BrownianForce;
+			v_xyz[0] *= 1.0 - Friction;
+			v_xyz[1] *= 1.0 - Friction;
+			v_xyz[2] *= 1.0 - Friction;
+			
+			
+			xyz[0] += v_xyz[0] * TimeDelta;
+			xyz[1] += v_xyz[1] * TimeDelta;
+			xyz[2] += v_xyz[2] * TimeDelta;
+			
+			this.Velocities.set( v_xyz, fi );
+			this.Positions.set( xyz, fi );
+		}
+	}
+}
+
+let LiquidPhsyics = null;
+let LiquidSphereCount = 25;
+
+let IngredientPhsyics = null;
+let IngredientCount = 3;
+
+function RandomPositionsInsideCylinder(Bottom,Top,Radius,Count)
+{
+	let Positions = [];
+	
+	//	might be good later to do random xyz in volume, then clip with sdf which we may prefer in future
+	
+	for ( let i=0;	i<Count;	i++ )
+	{
+		let r = Math.random();
+		let y = Math.random();
+		let a = PopMath.DegToRad( Math.random() * 360.0 );
+
+		//	if radius is truly uniform, then we'll be more dense in the middle, so weight random radius towards edge
+		r = 1.0 - ( r*r );
+		r *= Radius;
+		
+		let x = Math.cos(a) * r;
+		let z = Math.sin(a) * r;
+		
+		//	todo: xz should be cross bottom->top in case it's not straight up!
+		let xyz = PopMath.Lerp3( Bottom, Top, y );
+		xyz[0] += x;
+		xyz[2] += z;
+		let w = Math.random();
+
+		Positions.push( ...xyz, w );
+	}
+	
+	return Positions;
+}
+
+
+function CreatePhysicsSet(VerletCount,RadiusZero,RadiusOne)
+{
+	if ( !DrinkTop && !DrinkBottom )
+		return null;
+
+	let Set = new PhysicsSet_t( DrinkBottom, DrinkTop, RadiusZero, RadiusOne, VerletCount );
+	return Set;
+}
+
+
 
 export function Update()
 {
-	if ( !LiquidSpherePositons )
-	{
-		LiquidSpherePositons = [];
-		LiquidSphereVelocties = [];
-		for ( let x=0;	x<LiquidSphereDim;	x++ )
-		{
-			for ( let y=0;	y<LiquidSphereDim;	y++ )
-			{
-				for ( let z=0;	z<LiquidSphereDim;	z++ )
-				{
-					let xf = x / (LiquidSphereDim-1);
-					let yf = y / (LiquidSphereDim-1);
-					let zf = z / (LiquidSphereDim-1);
-					let PositionScale = 0.05;
-					xf *= PositionScale;
-					yf *= PositionScale;
-					zf *= PositionScale;
-					let Radius = Math.random();
-					LiquidSpherePositons.push( xf, yf, zf, Radius );
-					LiquidSphereVelocties.push(0,0,0,0);
-				}
-			}
-		}
-		LiquidSpherePositons = new Float32Array(LiquidSpherePositons);
-		LiquidSphereVelocties = new Float32Array(LiquidSphereVelocties);
-	}
+	if ( !LiquidPhsyics )
+		LiquidPhsyics = CreatePhysicsSet( LiquidSphereCount, DrinkRadius, DrinkRadius*2.5 );
 	
-	//	update each pos
-	for ( let fi=0;	fi<LiquidSpherePositons.length;	fi+=4 )
-	{
-		let TimeDelta = 0.7 / 60.0;
-		let Friction = 0.03;
-		let Spring = 0.2;
-		let BrownianForce = 0.15;
-		 
-		//let i = fi / 4;
-		let v_xyz = LiquidSphereVelocties.slice(fi,fi+3);
-		let xyz = LiquidSpherePositons.slice(fi,fi+3);
+	if ( !IngredientPhsyics )
+		IngredientPhsyics = CreatePhysicsSet( IngredientCount, 0, DrinkRadius );
+
+	
+	const LiquidParams = {};
+	LiquidParams.Speed = 1.6;
+	LiquidParams.Friction = 0.20;
+	LiquidParams.Spring = 0.90;//0.2;
+	LiquidParams.BrownianForce = 0.01;//0.15;
+	LiquidParams.SpringTarget = UserTop ? UserTop.slice() : [0,0.0,0];
+	if ( LiquidPhsyics )
+		LiquidPhsyics.Update( LiquidParams );
+	
 		
-		let SpringTarget = DrinkTop ? DrinkTop.slice() : [0,0.0,0];
-		//	spring back to 0
-		v_xyz[0] += (SpringTarget[0]-xyz[0]) * Spring;
-		v_xyz[1] += (SpringTarget[1]-xyz[1]) * Spring;
-		v_xyz[2] += (SpringTarget[2]-xyz[2]) * Spring;
-		
-		v_xyz[0] += (Math.random()-0.5) * BrownianForce;
-		v_xyz[1] += (Math.random()-0.5) * BrownianForce;
-		v_xyz[2] += (Math.random()-0.5) * BrownianForce;
-		v_xyz[0] *= 1.0 - Friction;
-		v_xyz[1] *= 1.0 - Friction;
-		v_xyz[2] *= 1.0 - Friction;
-		
-		
-		xyz[0] += v_xyz[0] * TimeDelta;
-		xyz[1] += v_xyz[1] * TimeDelta;
-		xyz[2] += v_xyz[2] * TimeDelta;
-		
-		LiquidSphereVelocties.set( v_xyz, fi );
-		LiquidSpherePositons.set( xyz, fi );
-	}
+	const IngredientParams = {};
+	IngredientParams.Speed = 1.0;
+	IngredientParams.Friction = 0.10;
+	IngredientParams.Spring = 0.9;
+	IngredientParams.BrownianForce = 0;
+	IngredientParams.SpringTarget = PopMath.Add3( [0,0.0,0], UserTop ? UserTop.slice() : [0,0.0,0] );
+	if ( IngredientPhsyics )
+		IngredientPhsyics.Update( IngredientParams );
+	
+
 }
 
 function GetNormalisedTime()
@@ -202,10 +300,14 @@ export function GetRenderCommands(CameraUniforms,Camera,Assets)
 			Uniforms.LocalToWorldTransform = PopMath.CreateIdentityMatrix();
 			Uniforms.WorldBoundsBottom = Bottom;
 			Uniforms.WorldBoundsTop = Top;
-			Uniforms.BoundsRadius = 0.8;
-			Uniforms.DrinkRadius = 0.06;
-			Uniforms.TimeNormal = Time * Time;
-			Uniforms.LiquidSpherePositons = LiquidSpherePositons;
+			Uniforms.BoundsRadius = 0.2;
+			Uniforms.DrinkRadius = DrinkRadius;
+			Uniforms.TimeNormal = UserTime;
+			
+			if ( LiquidPhsyics )
+				Uniforms.LiquidSpherePositions = LiquidPhsyics.Positions;
+			if ( IngredientPhsyics )
+				Uniforms.IngredientPositions = IngredientPhsyics.Positions;
 			
 			Commands.push( ['Draw',DrinkGeo,DrinkShader,Uniforms] );
 		}
