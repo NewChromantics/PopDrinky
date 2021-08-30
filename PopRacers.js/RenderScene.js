@@ -24,7 +24,7 @@ InitialXrFrame.Planes = [CreateRandomImage(512,512)];
 
 async function LoadBackgroundImage()
 {
-	const Image = await Pop.LoadFileAsImageAsync('PopRacers.js/Drink/bar1.jpg');
+	const Image = await Pop.LoadFileAsImageAsync('PopRacers.js/Drink/bar8.png');
 	InitialXrFrame.Planes[0] = Image;
 	InitialXrFrame.Camera.Position = [0.012,0.196,0.359];
 	InitialXrFrame.Camera.LookAt = [0.02,0.16,0.00];

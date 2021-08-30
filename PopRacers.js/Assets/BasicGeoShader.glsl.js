@@ -1,4 +1,4 @@
-export const GeoVertGlsl = `
+export const Vert = `
 #version 100
 precision highp float;
 
@@ -34,8 +34,30 @@ void main()
 	vec4 WorldUp4 = LocalToWorldTransform * vec4(0,1,0,0);
 	WorldUp = WorldUp4.xyz;//normalize(WorldUp4.xyz / WorldUp4.w);
 }
-
-
-
 `;
-export default GeoVertGlsl;
+
+
+
+
+
+
+
+
+
+
+export const Frag = `
+#version 100
+precision highp float;
+
+uniform sampler2D Texture;
+varying vec2 FragLocalUv;
+
+void main()
+{
+	gl_FragColor = texture2D( Texture, FragLocalUv );
+}
+`;
+
+
+
+export default Vert;

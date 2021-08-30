@@ -1,5 +1,5 @@
 import {CreateCubeGeometry,CreateQuad3Geometry} from './PopEngineCommon/CommonGeometry.js'
-import GeoVertGlsl from './Assets/Geo.Vert.glsl.js'
+import * as BasicShaderSource from './Assets/BasicGeoShader.glsl.js'
 import {TrackQuadVertGlsl,TrackQuadFragGlsl} from './Assets/TrackQuad.Vert.glsl.js'
 import {ExtractShaderUniforms} from './PopEngineCommon/Shaders.js'
 import * as BlitShaderSource from './Assets/BlitYuv.Frag.glsl.js'
@@ -92,9 +92,9 @@ void main()
 `;
 
 
-const CubeShader_VertSource = GeoVertGlsl;
+const CubeShader_VertSource = BasicShaderSource.Vert;
 const TrackShader_VertSource = TrackQuadVertGlsl;
-const WorldGeoShader_VertSource = GeoVertGlsl;
+const WorldGeoShader_VertSource = BasicShaderSource.Vert;
 const WorldGeoShader_AttribNames = ['LocalPosition'];
 
 let WorldGeoShader = null;

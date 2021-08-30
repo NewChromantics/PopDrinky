@@ -5,13 +5,16 @@ export default Default;
 import Pop from './PopEngineCommon/PopEngine.js'
 import Params from './Params.js'
 import {CreateCubeGeometry} from './PopEngineCommon/CommonGeometry.js'
-import * as DrinkShaderSource from './Drink/DrinkShader.glsl.js'
 import {ExtractShaderUniforms} from './PopEngineCommon/Shaders.js'
+
+import * as DrinkShaderSource from './Drink/DrinkShader.glsl.js'
+import * as BasicShaderSource from './Assets/BasicGeoShader.glsl.js'
 
 
 let DrinkShader = null;
 let DrinkGeo = null;
 let DrinkGeoAttribs = null;
+let BasicShader = null;
 
 let DrinkBottom = null;
 let DrinkTop = null;
@@ -109,6 +112,14 @@ export async function LoadAssets(RenderContext)
 		const VertSource = DrinkShaderSource.Vert;
 		const ShaderUniforms = ExtractShaderUniforms(VertSource,FragSource);
 		DrinkShader = await RenderContext.CreateShader(VertSource,FragSource,ShaderUniforms,DrinkGeoAttribs);
+	}
+	
+	if ( !BasicShader && DrinkGeo )
+	{
+		const FragSource = BasicShaderSource.Frag;
+		const VertSource = BasicShaderSource.Vert;
+		const ShaderUniforms = ExtractShaderUniforms(VertSource,FragSource);
+		BasicShader = await RenderContext.CreateShader(VertSource,FragSource,ShaderUniforms,DrinkGeoAttribs);
 	}
 }
 
@@ -277,30 +288,32 @@ export function GetRenderCommands(CameraUniforms,Camera,Assets)
 	
 	const Time = GetNormalisedTime();
 	
-	function DrawCube(Position)
+	function DrawCube(Position,Size=0.01)
 	{
 		if ( !Position )
 			return;
 		const Uniforms = Object.assign({},CameraUniforms);
 		//const Position = TrackPoint.Position.slice();
-		Uniforms.LocalToWorldTransform = PopMath.CreateTranslationMatrix(...Position);
+		Uniforms.LocalToWorldTransform = PopMath.CreateTranslationScaleMatrix(Position,[Size,Size,Size]);
 		Uniforms.Selected = false;//TrackPoint.Selected;
-		Commands.push( ['Draw',DrinkGeo,DrinkShader,Uniforms] );
+		Commands.push( ['Draw',DrinkGeo,BasicShader,Uniforms] );
 	}
 	
 	{
 		let Bottom = DrinkBottom;
 		let Top = PendingPosition || DrinkTop || DrinkBottom;
-		//DrawCube(Bottom);
-		//DrawCube(Top);
+		DrawCube(Bottom);
+		DrawCube(Top);
+		DrawCube(UserTop);
 		
+		//if ( false )
 		if ( Bottom && Top )
 		{
 			const Uniforms = Object.assign({},CameraUniforms);
 			Uniforms.LocalToWorldTransform = PopMath.CreateIdentityMatrix();
 			Uniforms.WorldBoundsBottom = Bottom;
 			Uniforms.WorldBoundsTop = Top;
-			Uniforms.BoundsRadius = 0.2;
+			Uniforms.BoundsRadius = 4.7;
 			Uniforms.DrinkRadius = DrinkRadius;
 			Uniforms.TimeNormal = UserTime;
 			
