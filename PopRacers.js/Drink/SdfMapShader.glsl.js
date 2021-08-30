@@ -771,17 +771,17 @@ void main()
 	//return;
 
 	DistanceMaterial_t Distance = map( WorldPosition );
-	Distance.x /= 0.3;
+	//Distance.x /= 0.3;
 	
-	if ( Distance.x < 0.0 )
+	if ( false && Distance.x < 0.0 )
 	{
-		gl_FragColor = vec4(0,1,0,1);
+		//gl_FragColor = vec4(0,1,0,1);
 	}
 	else
 	{
 		gl_FragColor.x = Distance.x;
 		gl_FragColor.y = 0.0;
-		gl_FragColor.z = Distance.y / 3.0;
+		gl_FragColor.z = Distance.y;
 		gl_FragColor.w = 1.0;
 		
 		//gl_FragColor = vec4(Distance.xxx,1.0);

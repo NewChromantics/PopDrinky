@@ -64,12 +64,42 @@ void main()
 export const Frag = `
 precision highp float;
 
-varying vec3 WorldPosition;
+#define RENDER_SDFMAPS	16
+
+#if defined(RENDER_SDFMAPS)
+
+uniform sampler2D SdfMap_0;
+uniform sampler2D SdfMap_1;
+uniform sampler2D SdfMap_2;
+uniform sampler2D SdfMap_3;
+uniform sampler2D SdfMap_4;
+uniform sampler2D SdfMap_5;
+uniform sampler2D SdfMap_6;
+uniform sampler2D SdfMap_7;
+uniform sampler2D SdfMap_8;
+uniform sampler2D SdfMap_9;
+uniform sampler2D SdfMap_10;
+uniform sampler2D SdfMap_11;
+uniform sampler2D SdfMap_12;
+uniform sampler2D SdfMap_13;
+uniform sampler2D SdfMap_14;
+uniform sampler2D SdfMap_15;
+uniform vec3 SdfMapMin[RENDER_SDFMAPS];
+uniform vec3 SdfMapMax[RENDER_SDFMAPS];
+#define SdfMapMinFirst	SdfMapMin[0]
+#define SdfMapMaxFirst	SdfMapMax[0]
+#define SdfMapMinLast	SdfMapMin[RENDER_SDFMAPS-1]
+#define SdfMapMaxLast	SdfMapMax[RENDER_SDFMAPS-1]
+#else
+#endif
 uniform vec3 WorldBoundsBottom;
 uniform vec3 WorldBoundsTop;
 uniform float BoundsRadius;
 uniform float DrinkRadius;
 
+//#endif
+
+varying vec3 WorldPosition;
 uniform mat4 ScreenToCameraTransform;
 uniform mat4 CameraToWorldTransform;
 const vec4 Sphere = vec4(0,0,0,0.5);
@@ -102,7 +132,6 @@ const float FloorY = 0.1;
 #define MAX_STEPS	20
 #define CLOSEENOUGH_FOR_HIT	0.001
 
-
 const float BottomHeightPercent = 0.3;
 const float TopHeightPercent = 0.5;
 const float FlyHeight = 0.3;
@@ -111,7 +140,6 @@ uniform vec4 LiquidSpherePositions[LiquidSpherePositionCount];
 
 #define IngredientPositionCount	2
 uniform vec4 IngredientPositions[IngredientPositionCount];
-
 
 
 vec3 NormalToRedGreen(float Normal)
@@ -579,8 +607,96 @@ DistanceMaterial_t NearestMaterial(DistanceMaterial_t a,DistanceMaterial_t b)
 	return (a.x < b.x) ? a : b;
 }
 
+#if defined(RENDER_SDFMAPS)
+DistanceMaterial_t SampleSdfMapX(vec3 Position,sampler2D Map)
+{
+	float u = Range( SdfMapMinFirst.x, SdfMapMaxFirst.x, Position.x );
+	float v = Range( SdfMapMinFirst.y, SdfMapMaxFirst.y, Position.y );
+	vec4 Sample = texture2D(Map, vec2(u,v) );
+	return Sample.xz;
+}
+DistanceMaterial_t SampleSdfMap(vec3 Position,int Index)
+{
+	if ( Index == 0 )	return SampleSdfMapX( Position, SdfMap_0 );	
+	if ( Index == 1 )	return SampleSdfMapX( Position, SdfMap_1 );	
+	if ( Index == 2 )	return SampleSdfMapX( Position, SdfMap_2 );	
+	if ( Index == 3 )	return SampleSdfMapX( Position, SdfMap_3 );	
+	if ( Index == 4 )	return SampleSdfMapX( Position, SdfMap_4 );	
+	if ( Index == 5 )	return SampleSdfMapX( Position, SdfMap_5 );	
+	if ( Index == 6 )	return SampleSdfMapX( Position, SdfMap_6 );	
+	if ( Index == 7 )	return SampleSdfMapX( Position, SdfMap_7 );	
+	if ( Index == 8 )	return SampleSdfMapX( Position, SdfMap_8 );	
+	if ( Index == 9 )	return SampleSdfMapX( Position, SdfMap_9 );	
+	if ( Index == 10 )	return SampleSdfMapX( Position, SdfMap_10 );	
+	if ( Index == 11 )	return SampleSdfMapX( Position, SdfMap_11 );	
+	if ( Index == 12 )	return SampleSdfMapX( Position, SdfMap_12 );	
+	if ( Index == 13 )	return SampleSdfMapX( Position, SdfMap_13 );	
+	if ( Index == 14 )	return SampleSdfMapX( Position, SdfMap_14 );	
+	if ( Index == 15 )	return SampleSdfMapX( Position, SdfMap_15 );	
+	/*	
+	if ( Index == 16 )	return SampleSdfMapX( Position, SdfMap_16 );
+	if ( Index == 17 )	return SampleSdfMapX( Position, SdfMap_17 );	
+	if ( Index == 18 )	return SampleSdfMapX( Position, SdfMap_18 );	
+	if ( Index == 19 )	return SampleSdfMapX( Position, SdfMap_19 );	
+	return SampleSdfMapX( Position, SdfMap_19 );
+	*/
+	return SampleSdfMapX( Position, SdfMap_15 );
+}
+DistanceMaterial_t MapSdfMaps(vec3 Position)
+{
+	//	work out which slice index (z) to use
+	float zf = Range( SdfMapMinFirst.z, SdfMapMaxLast.z, Position.z );
+	zf *= float(RENDER_SDFMAPS);
+	int zi = int(floor(zf));
+	zf = zf - floor(zf);
+
+	float Inside = 1.0;
+	if ( zi < 0 )	
+	{
+		zi = 0;
+		Inside = 0.0;
+	}
+	else if ( zi > RENDER_SDFMAPS-1 )	
+	{
+		zi = RENDER_SDFMAPS-1;
+		Inside = 0.0;
+	}
+	
+	DistanceMaterial_t Start = SampleSdfMap(Position,zi+0);
+	DistanceMaterial_t End = SampleSdfMap(Position,zi+1);
+	
+	DistanceMaterial_t Result = mix( Start, End, zf );
+	//	step back hack, means data isnt blended!
+	//	means also stuff gets blobbier
+	//Result.x -= 0.01;
+	//	force 1 material
+	Result.y = Start.y;
+	
+	
+	//	outside slices, return distance to the block of slices
+	if ( Inside < 0.5 )
+	{
+		vec3 SdfMapMin_i = SdfMapMin[0];
+		vec3 SdfMapMax_i = SdfMapMax[0];
+		vec3 SlicePosition;
+		SlicePosition.x = clamp( Position.x, SdfMapMin_i.x, SdfMapMax_i.x );
+		SlicePosition.y = clamp( Position.y, SdfMapMax_i.y, SdfMapMin_i.y );//	reversed!
+		SlicePosition.z = clamp( Position.z, SdfMapMinFirst.z, SdfMapMaxLast.z );
+		//	does "correct" distance to the slice range
+		float StepInside = 0.01;
+		Result.x = length( Position - SlicePosition ) + StepInside;
+	}
+	
+	return Result;
+}
+#endif
+
 DistanceMaterial_t map(vec3 Position)
 {
+#if defined(RENDER_SDFMAPS)
+	return MapSdfMaps( Position );
+#else
+
 	//float GlassDistance = DistanceToGlass( Position );
 	float LiquidDistance = DistanceToLiquid( Position );
 	//float Distance = opSmoothUnion( GlassDistance, LiquidDistance, 0.03 );
@@ -595,6 +711,7 @@ DistanceMaterial_t map(vec3 Position)
 	//return NearestMaterial( Liquid, Floor );
 	return NearestMaterial( Liquid, Ingredient );
 	return Liquid;
+#endif
 }
 
 
@@ -605,6 +722,7 @@ vec4 GetSceneIntersection(vec3 RayPos,vec3 RayDir)
 	const float CloseEnough = CLOSEENOUGH_FOR_HIT;
 	const float MinStep = CloseEnough;
 	const int MaxSteps = MAX_STEPS;
+	const float StepBack = 0.0;
 
 	//	time = distance
 	float RayTime = 0.0;
@@ -636,12 +754,15 @@ vec4 GetSceneIntersection(vec3 RayPos,vec3 RayDir)
 		DistanceMaterial_t HitDistanceMaterial = map( Position);
 		float HitDistance = HitDistanceMaterial.x;
 	
+	//MarchMissHit = vec4( RayPos + RayDir * HitDistanceMaterial.x, HitDistanceMaterial.y );;
+	
 		if ( HitDistance <= CloseEnough )
 		{
 			//float Heat = 1.0 - (float(s)/float(MaxSteps));
 			return vec4( Position, HitDistanceMaterial.y );
 		}
 		RayTime += max( HitDistance, MinStep );
+		RayTime -= StepBack;
 		
 		//	ray gone too far
 		if (RayTime > MaxDistance)
