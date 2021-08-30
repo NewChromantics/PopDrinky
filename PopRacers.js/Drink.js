@@ -4,17 +4,21 @@ export default Default;
 
 import Pop from './PopEngineCommon/PopEngine.js'
 import Params from './Params.js'
-import {CreateCubeGeometry} from './PopEngineCommon/CommonGeometry.js'
+import {CreateCubeGeometry,CreateQuad3Geometry} from './PopEngineCommon/CommonGeometry.js'
 import {ExtractShaderUniforms} from './PopEngineCommon/Shaders.js'
 
 import * as DrinkShaderSource from './Drink/DrinkShader.glsl.js'
 import * as BasicShaderSource from './Assets/BasicGeoShader.glsl.js'
+import * as SdfMapShaderSource from './Drink/SdfMapShader.glsl.js'
 
 
 let DrinkShader = null;
 let DrinkGeo = null;
 let DrinkGeoAttribs = null;
 let BasicShader = null;
+let BlitQuadGeo = null;
+let SdfMapShader = null;
+let BlitQuadGeoAttribs = null;
 
 let DrinkBottom = null;
 let DrinkTop = null;
@@ -106,6 +110,13 @@ export async function LoadAssets(RenderContext)
 		DrinkGeoAttribs = Object.keys(Geometry);
 	}
 	
+	if ( !BlitQuadGeo )
+	{
+		const Geometry = CreateQuad3Geometry(-1,1);
+		BlitQuadGeo = await RenderContext.CreateGeometry(Geometry,undefined);
+		BlitQuadGeoAttribs = Object.keys(Geometry);
+	}
+	
 	if ( !DrinkShader && DrinkGeo )
 	{
 		const FragSource = DrinkShaderSource.Frag;
@@ -120,6 +131,14 @@ export async function LoadAssets(RenderContext)
 		const VertSource = BasicShaderSource.Vert;
 		const ShaderUniforms = ExtractShaderUniforms(VertSource,FragSource);
 		BasicShader = await RenderContext.CreateShader(VertSource,FragSource,ShaderUniforms,DrinkGeoAttribs);
+	}
+	
+	if ( !SdfMapShader && BlitQuadGeo )
+	{
+		const FragSource = SdfMapShaderSource.Frag;
+		const VertSource = SdfMapShaderSource.Vert;
+		const ShaderUniforms = ExtractShaderUniforms(VertSource,FragSource);
+		SdfMapShader = await RenderContext.CreateShader(VertSource,FragSource,ShaderUniforms,BlitQuadGeoAttribs);
 	}
 }
 
@@ -282,11 +301,104 @@ function GetNormalisedTime()
 	return TimeNorm;
 }
 
+let SdfSlicesTextures = null;
+let SdfSliceCount = 10;
+const DrinkClipRadius = 0.5;
+
 export function GetRenderCommands(CameraUniforms,Camera,Assets)
 {
 	let Commands = [];
 	
-	const Time = GetNormalisedTime();
+	const RealTime = GetNormalisedTime();
+
+	let Bottom = DrinkBottom;
+	let Top = PendingPosition || DrinkTop || DrinkBottom;
+	
+/*
+	if ( !SdfSlicesTextures && DrinkBottom && DrinkTop )
+	{
+		SdfSlicesTextures = [];
+		for ( let s=0;	s<SdfSliceCount;	s++ )
+		{
+			let SdfTexture = new Pop.Image();
+			const Pixels = new Float32Array( 1024*1024*4 );
+			SdfTexture.WritePixels( 1024, 1024, Pixels, 'Float4' );
+			SdfSlicesTextures.push(SdfTexture);
+		}
+	}
+	
+	*/
+	//	make array of slice quad positions
+	let SliceQuadMinMaxs = [];	//	[0,0,0,	1,1,1
+	if ( Top && Bottom )
+	{
+		for ( let s=0;	s<SdfSliceCount;	s++ )
+		{
+			let ClipZ = DrinkClipRadius * 0.3;
+			//let MaxZ = DrinkRadius + ClipZ;
+			let MaxZ = DrinkRadius + 0.1;
+			let MinZ = -MaxZ;
+			let XOff = DrinkRadius + DrinkClipRadius*0.5;
+			let YUp = DrinkClipRadius;
+			let YDown = 0;
+			//function AddSlice(CenterX,CenterY,CenterZ
+			let z = PopMath.Lerp( MinZ, MaxZ, s/SdfSliceCount );
+			let Min = PopMath.Add3( Top, [-XOff,YUp,z] );
+			let Max = PopMath.Add3( Bottom, [XOff,YDown,z] );
+			SliceQuadMinMaxs.push( [Min, Max] );
+		}
+	}
+	
+	for ( let s=0;	s<SliceQuadMinMaxs.length;	s++ )
+	{
+		const SliceQuadMinMax = SliceQuadMinMaxs[s];
+		const Uniforms = Object.assign({},CameraUniforms);
+		Uniforms.WorldQuadMin = SliceQuadMinMax[0];
+		Uniforms.WorldQuadMax = SliceQuadMinMax[1];
+		Uniforms.BlitProjection = 0;
+
+		//	sdf data
+		Uniforms.DrinkRadius = DrinkRadius;
+		Uniforms.TimeNormal = UserTime;
+		Uniforms.RealTime = RealTime;
+	
+			
+		if ( LiquidPhsyics )
+			Uniforms.LiquidSpherePositions = LiquidPhsyics.Positions;
+		if ( IngredientPhsyics )
+			Uniforms.IngredientPositions = IngredientPhsyics.Positions;
+			
+		Commands.push( ['Draw',BlitQuadGeo,SdfMapShader,Uniforms] );
+
+	}
+	
+	/*
+	//	render slices
+	if ( SdfTexture )
+	{
+		Commands.push( ['SetRenderTarget',SdfTexture,[0,0,1,1]] );
+		
+		const Uniforms = Object.assign({},CameraUniforms);
+		Uniforms.WorldBoundsBottom = PopMath.Add3( Top, [0,0.1,0] );
+		Uniforms.WorldBoundsTop = PopMath.Add3( Top, [0,0.4,0] );
+		Uniforms.BoundsRadius = 0.1;
+		Uniforms.DrinkRadius = DrinkRadius;
+		Uniforms.TimeNormal = UserTime;
+		Uniforms.RealTime = RealTime;
+			
+		if ( LiquidPhsyics )
+			Uniforms.LiquidSpherePositions = LiquidPhsyics.Positions;
+		if ( IngredientPhsyics )
+			Uniforms.IngredientPositions = IngredientPhsyics.Positions;
+			
+		Commands.push( ['Draw',BlitQuadGeo,SdfMapShader,Uniforms] );
+
+		//	restore render target
+		Commands.push( ['SetRenderTarget',null] );
+		//return Commands;
+	}
+	*/
+	
 	
 	function DrawCube(Position,Size=0.01)
 	{
@@ -296,24 +408,26 @@ export function GetRenderCommands(CameraUniforms,Camera,Assets)
 		//const Position = TrackPoint.Position.slice();
 		Uniforms.LocalToWorldTransform = PopMath.CreateTranslationScaleMatrix(Position,[Size,Size,Size]);
 		Uniforms.Selected = false;//TrackPoint.Selected;
+		Uniforms.Texture = SdfTexture;
 		Commands.push( ['Draw',DrinkGeo,BasicShader,Uniforms] );
 	}
 	
+	//if ( SdfTexture )
+		//DrawCube(Bottom,0.1);
+	
+	//if ( false )
 	{
-		let Bottom = DrinkBottom;
-		let Top = PendingPosition || DrinkTop || DrinkBottom;
-		DrawCube(Bottom);
-		DrawCube(Top);
-		DrawCube(UserTop);
+		//DrawCube(Bottom);
+		//DrawCube(Top);
+		//DrawCube(UserTop);
 		
-		//if ( false )
 		if ( Bottom && Top )
 		{
 			const Uniforms = Object.assign({},CameraUniforms);
 			Uniforms.LocalToWorldTransform = PopMath.CreateIdentityMatrix();
 			Uniforms.WorldBoundsBottom = Bottom;
 			Uniforms.WorldBoundsTop = Top;
-			Uniforms.BoundsRadius = 4.7;
+			Uniforms.BoundsRadius = DrinkClipRadius;
 			Uniforms.DrinkRadius = DrinkRadius;
 			Uniforms.TimeNormal = UserTime;
 			
@@ -323,6 +437,7 @@ export function GetRenderCommands(CameraUniforms,Camera,Assets)
 				Uniforms.IngredientPositions = IngredientPhsyics.Positions;
 			
 			Commands.push( ['Draw',DrinkGeo,DrinkShader,Uniforms] );
+			//Commands.push( ['Draw',BlitQuadGeo,BasicShader,Uniforms] );
 		}
 	}
 
