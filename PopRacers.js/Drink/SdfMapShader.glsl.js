@@ -24,8 +24,10 @@ uniform float BlitProjection;	//	else in world space
 void main()
 {
 	//	plane on y=0, -1 to 1
-	vec3 LocalPos = LocalPosition.xzy;
-	vec3 LocalPos01 = (LocalPos + vec3(1,1,1)) / vec3(2,2,2);
+	//vec3 LocalPos = LocalPosition.xzy;
+	//vec3 LocalPos01 = LocalPos;//(LocalPos + vec3(1,1,1)) / vec3(2,2,2);
+	vec3 LocalPos = vec3( LocalUv.x, LocalUv.y, 1.0 ); 
+	vec3 LocalPos01 = LocalPos;
 	
 	//vec4 WorldPos = LocalToWorldTransform * vec4(LocalPos,1);
 	vec4 WorldPos;
@@ -41,7 +43,7 @@ void main()
 	
 	WorldPosition = WorldPos.xyz;
 	FragColour = vec3( LocalUv );
-	FragLocalPosition = LocalPosition;
+	FragLocalPosition = LocalPos01;//LocalPosition;
 	FragLocalUv = LocalUv.xy;
 	TriangleIndex = LocalUv.z;
 }

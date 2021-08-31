@@ -337,12 +337,12 @@ export function GetRenderCommands(CameraUniforms,Camera,Assets)
 		for ( let s=0;	s<SdfSlicesTextures.length;	s++ )
 		{
 			let t = s / (SdfSlicesTextures.length-1);
-			let ClipZ = DrinkClipRadius * 0.3;
-			//let MaxZ = DrinkRadius + ClipZ;
-			let MaxZ = DrinkRadius + 0.0;
+			let ZExtra = 0.01;
+			let XExtra = 0.1;
+			let MaxZ = DrinkRadius + ZExtra;
 			let MinZ = -MaxZ;
-			let XOff = DrinkRadius + DrinkClipRadius*0.5;
-			let YUp = DrinkClipRadius;
+			let XOff = DrinkRadius + XExtra;
+			let YUp = 0.4;	//	extend upwards
 			let YDown = 0;
 			//function AddSlice(CenterX,CenterY,CenterZ
 			let z = PopMath.Lerp( MinZ, MaxZ, t );
@@ -352,35 +352,39 @@ export function GetRenderCommands(CameraUniforms,Camera,Assets)
 		}
 	}
 	
-	for ( let s=0;	s<SliceQuadMinMaxs.length;	s++ )
+	function RenderQuads(Blitting)
 	{
-		const SliceQuadMinMax = SliceQuadMinMaxs[s];
-		const SliceTexture = SdfSlicesTextures[s];
-		const Uniforms = Object.assign({},CameraUniforms);
-		Uniforms.WorldQuadMin = SliceQuadMinMax[0];
-		Uniforms.WorldQuadMax = SliceQuadMinMax[1];
-		Uniforms.BlitProjection = 1;
+		for ( let s=0;	s<SliceQuadMinMaxs.length;	s++ )
+		{
+			const SliceQuadMinMax = SliceQuadMinMaxs[s];
+			const SliceTexture = SdfSlicesTextures[s];
+			const Uniforms = Object.assign({},CameraUniforms);
+			Uniforms.WorldQuadMin = SliceQuadMinMax[0];
+			Uniforms.WorldQuadMax = SliceQuadMinMax[1];
+			Uniforms.BlitProjection = Blitting ? 1 : 0;
 
-		//	sdf data
-		Uniforms.DrinkRadius = DrinkRadius;
-		Uniforms.TimeNormal = UserTime;
-		Uniforms.RealTime = RealTime;
-	
-			
-		if ( LiquidPhsyics )
-			Uniforms.LiquidSpherePositions = LiquidPhsyics.Positions;
-		if ( IngredientPhsyics )
-			Uniforms.IngredientPositions = IngredientPhsyics.Positions;
+			//	sdf data
+			Uniforms.DrinkRadius = DrinkRadius;
+			Uniforms.TimeNormal = UserTime;
+			Uniforms.RealTime = RealTime;
 		
-		if ( Uniforms.BlitProjection )
-			Commands.push( ['SetRenderTarget',SliceTexture,[0,0,1,1]] );
+				
+			if ( LiquidPhsyics )
+				Uniforms.LiquidSpherePositions = LiquidPhsyics.Positions;
+			if ( IngredientPhsyics )
+				Uniforms.IngredientPositions = IngredientPhsyics.Positions;
 			
-		Commands.push( ['Draw',BlitQuadGeo,SdfMapShader,Uniforms] );
+			if ( Uniforms.BlitProjection )
+				Commands.push( ['SetRenderTarget',SliceTexture,[0,0,1,1]] );
+				
+			Commands.push( ['Draw',BlitQuadGeo,SdfMapShader,Uniforms] );
 
-		if ( Uniforms.BlitProjection )
-			Commands.push( ['SetRenderTarget',null]);
+			if ( Uniforms.BlitProjection )
+				Commands.push( ['SetRenderTarget',null]);
+		}
 	}
-	
+	RenderQuads(true);
+	//RenderQuads(false);
 	
 	//	debug draw a slice
 	let SdfTexture = SdfSlicesTextures ? SdfSlicesTextures[0] : null;
@@ -416,6 +420,7 @@ export function GetRenderCommands(CameraUniforms,Camera,Assets)
 			Uniforms.BoundsRadius = DrinkClipRadius;
 			Uniforms.DrinkRadius = DrinkRadius;
 			Uniforms.TimeNormal = UserTime;
+			Uniforms.RealTime = RealTime;
 			
 			if ( LiquidPhsyics )
 				Uniforms.LiquidSpherePositions = LiquidPhsyics.Positions;
@@ -437,8 +442,10 @@ export function GetRenderCommands(CameraUniforms,Camera,Assets)
 			}
 			Uniforms.SdfMapMin = SdfMapMin;
 			Uniforms.SdfMapMax = SdfMapMax;
-						
-			Commands.push( ['Draw',DrinkGeo,DrinkShader,Uniforms] );
+			
+			const State = {};
+			State.DepthRead = false;
+			Commands.push( ['Draw',DrinkGeo,DrinkShader,Uniforms,State] );
 			//Commands.push( ['Draw',BlitQuadGeo,BasicShader,Uniforms] );
 		}
 	}

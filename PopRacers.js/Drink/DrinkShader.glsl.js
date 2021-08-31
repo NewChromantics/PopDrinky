@@ -108,6 +108,7 @@ const bool DrawShadows = true;
 const bool DrawHeat = false;
 
 uniform float TimeNormal;
+uniform float RealTime;
 
 #define Material_None		0.0
 #define Material_Liquid		1.0
@@ -645,45 +646,62 @@ DistanceMaterial_t SampleSdfMap(vec3 Position,int Index)
 DistanceMaterial_t MapSdfMaps(vec3 Position)
 {
 	//	work out which slice index (z) to use
+	float Inside = 1.0;
 	float zf = Range( SdfMapMinFirst.z, SdfMapMaxLast.z, Position.z );
+	
 	zf *= float(RENDER_SDFMAPS);
 	int zi = int(floor(zf));
 	zf = zf - floor(zf);
 
-	float Inside = 1.0;
-	if ( zi < 0 )	
+#define MIN_SLICE	0
+#define MAX_SLICE	(RENDER_SDFMAPS-1)
+//#define MIN_SLICE	2
+//#define MAX_SLICE	9
+	if ( zi < MIN_SLICE )	
 	{
-		zi = 0;
+		zi = MIN_SLICE;
 		Inside = 0.0;
 	}
-	else if ( zi > RENDER_SDFMAPS-1 )	
+	else if ( zi > MAX_SLICE-1 )	
 	{
-		zi = RENDER_SDFMAPS-1;
+		zi = MAX_SLICE-1;
 		Inside = 0.0;
 	}
 	
+	
+	//zi = int( mix( 0.0, float(RENDER_SDFMAPS-2), RealTime ) );
+	//zi = int( mix( 0.0, float(RENDER_SDFMAPS-2), TimeNormal ) );
+	//zi = 2;
 	DistanceMaterial_t Start = SampleSdfMap(Position,zi+0);
 	DistanceMaterial_t End = SampleSdfMap(Position,zi+1);
 	
 	DistanceMaterial_t Result = mix( Start, End, zf );
-	//	step back hack, means data isnt blended!
-	//	means also stuff gets blobbier
-	//Result.x -= 0.01;
 	//	force 1 material
 	Result.y = Start.y;
 	
 	
+	//	not sure how neccessary this is? should clip at edges
+	float u = Range( SdfMapMinFirst.x, SdfMapMaxFirst.x, Position.x );
+	float v = Range( SdfMapMinFirst.y, SdfMapMaxFirst.y, Position.y );
+	if ( u < 0.0 || u > 1.0 || v < 0.0 || v>1.0 )
+		Inside = 0.0;
+
+	
+	//	gr: I think we're geting a repeat when on far side
+	
 	//	outside slices, return distance to the block of slices
-	if ( Inside < 0.5 )
+	bool RenderBounds = false;
+	if ( Inside < 0.5 || RenderBounds )
 	{
 		vec3 SdfMapMin_i = SdfMapMin[0];
 		vec3 SdfMapMax_i = SdfMapMax[0];
+		//	gr: I dont think this clamped pos is neccessarily the "nearest" point, but seems to work...
 		vec3 SlicePosition;
 		SlicePosition.x = clamp( Position.x, SdfMapMin_i.x, SdfMapMax_i.x );
 		SlicePosition.y = clamp( Position.y, SdfMapMax_i.y, SdfMapMin_i.y );//	reversed!
 		SlicePosition.z = clamp( Position.z, SdfMapMinFirst.z, SdfMapMaxLast.z );
+		float StepInside = RenderBounds ? 0.00 : 0.01;
 		//	does "correct" distance to the slice range
-		float StepInside = 0.01;
 		Result.x = length( Position - SlicePosition ) + StepInside;
 	}
 	
